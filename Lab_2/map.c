@@ -50,7 +50,10 @@ void map_remove_if(struct map* m,
 	{
 		struct association *e = list_entry(it, struct association, elem);
 		if (cond(e->key, e->value, aux))
+		{
 			it = map_remove_from_pointer(&m, e);
+			it = list_prev(it);
+		}
 	}
 }
 
@@ -64,12 +67,14 @@ struct association *map_find_associative(struct map *m, key_t k)
 	}
 	return NULL;
 }
+
 struct list_elem *map_remove_from_pointer(struct map *m, struct association *it)
 {
 	struct list_elem *tmp = list_remove(&it->elem);
 	free(it);
 	return tmp;
 }
+
 int free_all_mem(struct map *m)
 {
 	struct list_elem *it = list_begin(&m->content);
