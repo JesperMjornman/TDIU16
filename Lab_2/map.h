@@ -26,7 +26,7 @@ void map_init(struct map* m);
 key_t map_insert(struct map* m, value_t v);
 value_t map_find(struct map* m, key_t k);
 value_t map_remove(struct map* m, key_t k);
-
+struct list_elem *map_remove_from_pointer(struct map *m, struct association *it);
 void map_for_each(struct map* m,
 	void(*exec)(key_t k, value_t v, int aux),
 	int aux);
@@ -35,5 +35,6 @@ void map_remove_if(struct map* m,
 	bool(*cond)(key_t k, value_t v, int aux),
 	int aux);
 
+int free_all_mem(struct map *dict);
 struct association *map_find_associative(struct map *m, key_t k);
 #endif
