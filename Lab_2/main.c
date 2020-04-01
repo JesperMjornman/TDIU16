@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include "list.h"
-#include "dictionary.h"
+#include "map.h"
 #include <assert.h>
 #define _CRTDBG_MAP_ALLOC
 #include <crtdbg.h>
