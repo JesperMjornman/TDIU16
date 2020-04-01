@@ -1,4 +1,4 @@
-#include "dictionary.h"
+#include "map.h"
 #include <stdio.h>
 void map_init(struct map* m)
 {
