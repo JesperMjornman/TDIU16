@@ -1,4 +1,5 @@
 #include "map.h"
+#include <stdlib.h>
 #include <stdio.h>
 void map_init(struct map* m)
 {
@@ -51,7 +52,7 @@ void map_remove_if(struct map* m,
 		struct association *e = list_entry(it, struct association, elem);
 		if (cond(e->key, e->value, aux))
 		{
-			it = map_remove_from_pointer(&m, e);
+			it = map_remove_from_pointer(m, e);
 			it = list_prev(it);
 		}
 	}
@@ -81,7 +82,7 @@ size_t free_all_mem(struct map *m)
 	while(it != list_end(&m->content))
 	{
 		struct association *e = list_entry(it, struct association, elem);
-		it = map_remove_from_pointer(&m, e);
+		it = map_remove_from_pointer(m, e);
 	}
-	return (!list_size(&m->content));
+	return(!list_size(&m->content));
 }
