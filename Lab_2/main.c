@@ -4,8 +4,6 @@
 #include "list.h"
 #include "map.h"
 #include <assert.h>
-#define _CRTDBG_MAP_ALLOC
-#include <crtdbg.h>
 void printKeyPair(key_t k, value_t v, int aux);
 bool isEven(key_t k, value_t v, int aux);
 int main(int argc, char *argv[])
@@ -15,14 +13,14 @@ int main(int argc, char *argv[])
 
 	printf("Added elem with key: %d\n", map_insert(&dict, "10"));
 	printf("Added elem with key: %d\n", map_insert(&dict, "12"));
-	
-	assert(list_size(&dict) == 2);
+
+	assert(list_size(&dict.content) == 2);
 	assert(map_find(&dict, 0) == "10");
 	assert(map_find(&dict, 1) == "12");
 
 	map_remove(&dict, 0);
 
-	assert(list_size(&dict) == 1);
+	assert(list_size(&dict.content) == 1);
 	assert(map_find(&dict, 0) == NULL);
 	assert(map_find(&dict, 1) == "12");
 
@@ -36,8 +34,7 @@ int main(int argc, char *argv[])
 	map_for_each(&dict, &printKeyPair, 0);
 
 	printf("Release all mem.\n");
-	free_all_mem(&dict);
-	_CrtDumpMemoryLeaks(); // Check for mem - leakage
+	assert(free_all_mem(&dict));
 	return 0;
 }
 
