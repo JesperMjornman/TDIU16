@@ -1,56 +1,128 @@
-#include <stdio.h>
-#include <stdbool.h>
 #include <stdlib.h>
-#include "list.h"
+#include <stdio.h>
+#include <string.h>
+
 #include "map.h"
-#include <assert.h>
-void printKeyPair(key_t k, value_t v, int aux);
-bool isEven(key_t k, value_t v, int aux);
-int main(int argc, char *argv[])
+
+/* Recommended compile commmand:
+ *
+ * gcc -Wall -Wextra -std=gnu99 -pedantic -g main.c map.c
+ *
+ * Recommended way to test your solution:
+ *
+ * valgrind --tool=memcheck ./a.out
+ */
+
+
+/* Can be used to inform compiler about unused parameters (prevent
+ * warning). Useful when a funtion pointer expect a certain set of
+ * parameters, but you only need some of them. */
+#define UNUSED __attribute__((unused))
+
+/* The code assumes that key_t is `int' and value_t is `char*' */
+
+/* function passed as parameter to map_remove_if in order to free the
+ * memory for all inseted values, and return true to remove them from
+ * the map */
+bool do_free(key_t k UNUSED, value_t v, int aux UNUSED)
 {
-	struct map dict;
-	map_init(&dict);
-
-	printf("Added elem with key: %d\n", map_insert(&dict, "10"));
-	printf("Added elem with key: %d\n", map_insert(&dict, "12"));
-
-	assert(list_size(&dict.content) == 2);
-	assert(map_find(&dict, 0) == "10");
-	assert(map_find(&dict, 1) == "12");
-
-	map_remove(&dict, 0);
-
-	assert(list_size(&dict.content) == 1);
-	assert(map_find(&dict, 0) == NULL);
-	assert(map_find(&dict, 1) == "12");
-
-	printf("Added elem with key: %d\n", map_insert(&dict, "13"));
-	printf("Added elem with key: %d\n", map_insert(&dict, "14"));
-	printf("Added elem with key: %d\n", map_insert(&dict, "16"));
-
-	printf("All elements printed with aux = 0: \n");
-	map_for_each(&dict, &printKeyPair, 0);
-	printf("All elements printed with aux = 1: \n");
-	map_for_each(&dict, &printKeyPair, 1);
-
-	map_remove_if(&dict, &isEven, 0);
-	printf("After removing all even numbers: \n");
-	map_for_each(&dict, &printKeyPair, 0);
-
-	printf("Release all mem.\n");
-	assert(free_all_mem(&dict));
-	return 0;
+  free(v);     /*! free memory */
+  return true; /*  and remove from collection */
 }
 
-void printKeyPair(key_t k, value_t v, int aux)
+/* function to display all values in the map that are less than the
+ * aux argument */
+void print_less(key_t k UNUSED, value_t v, int aux)
 {
-	if(!aux)
-		printf("%d : %s\n", k, v);
-	else
-		printf("Key [%d] to Value [%s]\n", k, v);
+  /* atoi converst from sequence of character to integer, it will fail
+   * when the characters are letters, check the manpage to see how */
+  if ( atoi(v) < aux)
+  {
+    printf("%s ", v);
+  }
 }
 
-bool isEven(key_t k, value_t v, int aux)
+
+#define LOOPS 5
+
+char* my_strdup(char* str)
 {
-	return(!(atoi(v) % 2));
+  /*! calculate the length and add space for '\0' */
+  int len = strlen(str) + 1;
+  /*! allocate memory just large enough */
+  char* dst = (char*)malloc(len);
+  /*! copy all characters in src to dst */
+  strncpy(dst, str, len);
+
+  return dst; /*(!) return our deep copy of str */
+}
+
+int main()
+{
+  struct map container;
+  char input_buffer[10];
+  char* obj;
+  int id;
+  int i;
+
+  map_init(&container);
+
+  /* remember to try to insert more values than you map can hold */
+  printf("Insert values: ");
+  for ( i = 0; i < LOOPS; ++i)
+  {
+    /* insecure, scanf may overflow the input buffer array *
+     * very serious, but we ignore it in this test program */
+    scanf("%s", input_buffer);
+
+    /*! allocates a copy of the input and inserts in map */
+    obj = my_strdup(input_buffer);
+    id = map_insert(&container, obj);
+  }
+
+  /* remember to test with invalid keys (like 4711, or -1) */
+  for ( i = 0; i < LOOPS; ++i)
+  {
+    printf("Enter id to find value for: ");
+    scanf("%d", &id);
+
+    /*! find the value for a key in the map */
+    obj = map_find(&container, id);
+
+    /*! if it was found, display it */
+		if(obj != NULL)
+			printf("%s\n", obj);
+
+    /* since we leave the value in the map we may use it again and
+     * should not free the memory */
+  }
+
+  /* remember to test with invalid keys (like 4711, or -1) */
+  for ( i = 0; i < LOOPS; ++i)
+  {
+    printf("Enter id to remove value for: ");
+    scanf("%d", &id);
+
+    /*! find and remove a value for a key in the map */
+    obj = map_remove(&container, id);
+
+    /*! if it was found, display it */
+		if(obj != NULL)
+		{
+			printf("%s\n", obj);
+			free(obj);
+		}
+		/* since we removed the value from the map we will never use it again and
+     * must properly free the memory (if it was allocated) */
+  }
+
+  /*! print all strings representing an integer less than N */
+  printf("Will now display all values less than N. Choose N: ");
+  scanf("%d", &i);
+  map_for_each(&container, print_less, i);
+
+  /*! free all remaining memory and remove from map */
+  map_remove_if(&container, do_free, 0);
+	//free_all_mem(&container);
+  return 0;
 }
