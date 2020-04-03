@@ -83,4 +83,5 @@ int free_all_mem(struct map *m)
 		struct association *e = list_entry(it, struct association, elem);
 		it = map_remove_from_pointer(&m, e);
 	}
+	return (!list_size(&m->content));
 }
