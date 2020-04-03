@@ -18,7 +18,7 @@ struct association
 struct map
 {
 	struct list content;
-	int next_key; // Konstig?
+	int next_key;
 };
 
 void map_init(struct map* m);

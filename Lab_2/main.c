@@ -28,7 +28,11 @@ int main(int argc, char *argv[])
 	printf("Added elem with key: %d\n", map_insert(&dict, "14"));
 	printf("Added elem with key: %d\n", map_insert(&dict, "16"));
 
+	printf("All elements printed with aux = 0: \n");
 	map_for_each(&dict, &printKeyPair, 0);
+	printf("All elements printed with aux = 1: \n");
+	map_for_each(&dict, &printKeyPair, 1);
+
 	map_remove_if(&dict, &isEven, 0);
 	printf("After removing all even numbers: \n");
 	map_for_each(&dict, &printKeyPair, 0);
