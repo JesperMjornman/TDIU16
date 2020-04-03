@@ -123,6 +123,5 @@ int main()
 
   /*! free all remaining memory and remove from map */
   map_remove_if(&container, do_free, 0);
-	//free_all_mem(&container);
   return 0;
 }
