@@ -17,7 +17,7 @@ key_t map_insert(struct map* m, value_t v)
 }
 
 value_t map_find(struct map* m, key_t k)
-{	
+{
 	struct association *e = map_find_associative(m, k);
 	return e == NULL ? NULL : e->value;
 }
@@ -26,7 +26,7 @@ value_t map_remove(struct map* m, key_t k)
 {
 	struct association *e = map_find_associative(m, k);
 	value_t tmp = e->value;
-	list_remove(&e->elem); 
+	list_remove(&e->elem);
 	free(e);
 	return tmp;
 }
@@ -75,7 +75,7 @@ struct list_elem *map_remove_from_pointer(struct map *m, struct association *it)
 	return tmp;
 }
 
-int free_all_mem(struct map *m)
+size_t free_all_mem(struct map *m)
 {
 	struct list_elem *it = list_begin(&m->content);
 	while(it != list_end(&m->content))
@@ -83,4 +83,5 @@ int free_all_mem(struct map *m)
 		struct association *e = list_entry(it, struct association, elem);
 		it = map_remove_from_pointer(&m, e);
 	}
+	return (!list_size(&m->content));
 }
