@@ -47,7 +47,7 @@ struct processInfo
 */
 void plist_init(struct map *pl);
 void plist_print(struct map *m);
-void plist_print_format(key_t UNUSED, value_t v, int UNUSED);
+void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED);
 
 int plist_insert(struct map *m, value_t *v, key_t k);
 
