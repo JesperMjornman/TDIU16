@@ -1,6 +1,8 @@
-#include "map.h"
+#include "lib/kernel/map.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include "threads/malloc.h"
+
 void map_init(struct map* m)
 {
 	list_init(&m->content);
@@ -9,12 +11,25 @@ void map_init(struct map* m)
 
 key_t map_insert(struct map* m, value_t v)
 {
-	struct association *new_elem = malloc(sizeof(struct association));
+	struct association *new_elem = (struct association*)malloc(sizeof(struct association));
 	new_elem->key = m->next_key++;
 	new_elem->value = v;
 
 	list_push_back(&m->content, &new_elem->elem);
 	return new_elem->key;
+}
+
+bool map_insert_from_key(struct map *m, value_t v, key_t k)
+{
+	if (map_find(m, k) != NULL)
+		return false;
+
+	struct association *new_elem = malloc(sizeof(struct association));
+	new_elem->key = k;
+	new_elem->value = v;
+
+	list_push_back(&m->content, &new_elem->elem);
+	return true;
 }
 
 value_t map_find(struct map* m, key_t k)

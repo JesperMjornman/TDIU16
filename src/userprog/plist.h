@@ -1,9 +1,12 @@
 #ifndef _PLIST_H_
 #define _PLIST_H_
-
+#include <stdio.h>
+#include <stdbool.h>
+#include "lib/kernel/list.h"
+#include "lib/kernel/map.h"
 
 /* Place functions to handle a running process here (process list).
-   
+
    plist.h : Your function declarations and documentation.
    plist.c : Your implementation.
 
@@ -23,11 +26,33 @@
      from the list. Should only remove the information when no process
      or thread need it anymore, but must guarantee it is always
      removed EVENTUALLY.
-     
+
    - A function that print the entire content of the list in a nice,
      clean, readable format.
-     
+
  */
 
+struct processInfo
+{
+	int pid;
+	int parent_pid;
+	int exit_status;
+	bool alive;
+	bool parent_alive;
+};
 
+/*
+ 	Uses map.h for functionality
+	Some different solutions to the usage value_t is void*
+*/
+void plist_init(struct map *pl);
+void plist_print(struct map *m);
+void plist_print_format(key_t UNUSED, value_t v, int UNUSED);
+
+int plist_insert(struct map *m, value_t *v, key_t k);
+
+value_t plist_find(struct map* m, key_t k);
+value_t plist_remove(struct map* m, key_t k);
+
+size_t plist_free_all_mem(struct map *map);
 #endif

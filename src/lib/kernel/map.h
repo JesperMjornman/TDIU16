@@ -1,11 +1,12 @@
 #ifndef DICTIONARY_H
 #define DICTIONARY_H
 #include <stdbool.h>
-#include "list.h"
+#include "lib/kernel/list.h"
 
-#define PANIC(message) do { printf("PANIC: %s\n", message); exit(1); } while (0)
-
-typedef char* value_t;
+/*
+ * Remember to type cast to correct value in case of printing.
+ */
+typedef void* value_t;
 typedef int key_t;
 
 struct association
@@ -24,6 +25,7 @@ struct map
 void map_init(struct map* m);
 
 key_t map_insert(struct map* m, value_t v);
+bool map_insert_from_key(struct map *m, value_t v, key_t k);
 value_t map_find(struct map* m, key_t k);
 value_t map_remove(struct map* m, key_t k);
 
