@@ -39,5 +39,5 @@ void map_remove_if(struct map* m,
 
 size_t free_all_mem(struct map *dict);
 struct association *map_find_associative(struct map *m, key_t k);
-struct list_elem *map_remove_from_pointer(struct map *m, struct association *it);
+struct list_elem *map_remove_from_pointer(struct association *it);
 #endif
