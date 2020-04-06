@@ -46,13 +46,18 @@ struct processInfo
 	Some different solutions to the usage value_t is void*
 */
 void plist_init(struct map *pl);
-void plist_print(struct map *m);
+void plist_print(struct map *pl);
 void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED);
+bool plist_to_be_erased(key_t k UNUSED, value_t v, int aux UNUSED);
 
-int plist_insert(struct map *m, value_t *v, key_t k);
+int plist_insert(struct map *pl, value_t *v, key_t k);
 
-value_t plist_find(struct map* m, key_t k);
-value_t plist_remove(struct map* m, key_t k);
+value_t plist_find(struct map* pl, key_t k);
+value_t plist_remove(struct map* pl, key_t k);
 
-size_t plist_free_all_mem(struct map *map);
+size_t plist_free_all_mem(struct map *pl);
+struct processInfo *plist_create_process(int pid, int parent_pid);
+void plist_remove_if(struct map* m,
+	bool(*cond)(key_t k, value_t v, int aux),
+	int aux);
 #endif
