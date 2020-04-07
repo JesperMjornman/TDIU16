@@ -46,7 +46,7 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
-	int sys_read_arg_count = argc[ esp[0] ];
+	//int sys_read_arg_count = argc[ esp[0] ];
 
   switch ( esp[0] /* retrive syscall number */ ) // syscall number top of stack
   {
