@@ -6,7 +6,7 @@
 #include <stdint.h>
 
 #include "userprog/flist.h"
-
+#include "lib/kernel/map.h"
 /* States in a thread's life cycle. */
 enum thread_status
   {
@@ -95,6 +95,7 @@ struct thread
     struct list_elem elem;              /* List element. */
 
     /* YES! You may want to add stuff. But make note of point 2 above. */
+		struct map f_map; // File map for thread.
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

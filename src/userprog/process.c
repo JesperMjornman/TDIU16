@@ -25,11 +25,13 @@
 /* HACK defines code you must remove and implement in a proper way */
 #define HACK
 
+struct map process_list; //plist
 
 /* This function is called at boot time (threads/init.c) to initialize
  * the process subsystem. */
 void process_init(void)
 {
+	map_init(&process_list);
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -37,20 +39,24 @@ void process_init(void)
  * instead. Note however that all cleanup after a process must be done
  * in process_cleanup, and that process_cleanup are already called
  * from thread_exit - do not call cleanup twice! */
-void process_exit(int status UNUSED)
+void process_exit(int status)
 {
+	struct processInfo *p = map_find_associative(&process_list, thread_current()->tid)->value;
+	p->exit_status = status;
+	debug("Exiting process: %d, status %d", p->pid, p->exit_status);
 }
 
 /* Print a list of all running processes. The list shall include all
  * relevant debug information in a clean, readable format. */
 void process_print_list()
 {
+	plist_print(&process_list);
 }
-
 
 struct parameters_to_start_process
 {
   char* command_line;
+	int parent_pid;
 };
 
 static void
@@ -63,7 +69,7 @@ start_process(struct parameters_to_start_process* parameters) NO_RETURN;
    Returns the new process's thread id, or TID_ERROR if the thread
    cannot be created. */
 int
-process_execute (const char *command_line) 
+process_execute (const char *command_line)
 {
   char debug_name[64];
   int command_line_size = strlen(command_line) + 1;
@@ -84,8 +90,11 @@ process_execute (const char *command_line)
 
 
   strlcpy_first_word (debug_name, command_line, 64);
-  
-  /* SCHEDULES function `start_process' to run (LATER) */
+
+	// Set parent
+	arguments.parent_pid = thread_current()->tid;
+
+	/* SCHEDULES function `start_process' to run (LATER) */
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
 
@@ -93,8 +102,8 @@ process_execute (const char *command_line)
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
   power_off();
-  
-  
+
+
   /* WHICH thread may still be using this right now? */
   free(arguments.command_line);
 
@@ -118,12 +127,12 @@ start_process (struct parameters_to_start_process* parameters)
 
   char file_name[64];
   strlcpy_first_word (file_name, parameters->command_line, 64);
-  
+
   debug("%s#%d: start_process(\"%s\") ENTERED\n",
         thread_current()->name,
         thread_current()->tid,
         parameters->command_line);
-  
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -136,25 +145,29 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->name,
         thread_current()->tid,
         success);
-  
+
   if (success)
   {
     /* We managed to load the new program to a process, and have
        allocated memory for a process stack. The stack top is in
        if_.esp, now we must prepare and place the arguments to main on
        the stack. */
-  
+
     /* A temporary solution is to modify the stack pointer to
        "pretend" the arguments are present on the stack. A normal
        C-function expects the stack to contain, in order, the return
        address, the first argument, the second argument etc. */
-    
+
     HACK if_.esp -= 12; /* Unacceptable solution. */
 
-    /* The stack and stack pointer should be setup correct just before
+		map_insert_from_key(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
+		debug("Added process: %d, Child to: %d\n", thread_current()->tid, parameters->parent_pid);
+
+
+		    /* The stack and stack pointer should be setup correct just before
        the process start, so this is the place to dump stack content
        for debug purposes. Disable the dump when it works. */
-    
+
 //    dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
 
   }
@@ -163,8 +176,8 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->name,
         thread_current()->tid,
         parameters->command_line);
-  
-  
+
+
   /* If load fail, quit. Load may fail for several reasons.
      Some simple examples:
      - File doeas not exist
@@ -175,7 +188,7 @@ start_process (struct parameters_to_start_process* parameters)
   {
     thread_exit ();
   }
-  
+
   /* Start the user process by simulating a return from an interrupt,
      implemented by intr_exit (in threads/intr-stubs.S). Because
      intr_exit takes all of its arguments on the stack in the form of
@@ -195,7 +208,7 @@ start_process (struct parameters_to_start_process* parameters)
    This function will be implemented last, after a communication
    mechanism between parent and child is established. */
 int
-process_wait (int child_id) 
+process_wait (int child_id)
 {
   int status = -1;
   struct thread *cur = thread_current ();
@@ -205,7 +218,7 @@ process_wait (int child_id)
   /* Yes! You need to do something good here ! */
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);
-  
+
   return status;
 }
 
@@ -220,16 +233,21 @@ process_wait (int child_id)
    or initialized to something sane, or else that any such situation
    is detected.
 */
-  
+
 void
 process_cleanup (void)
 {
   struct thread  *cur = thread_current ();
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
-  
+
+	/* Set status to exit_status. */
+	struct processInfo *p = map_find(&process_list, cur->tid);
+	if(p != NULL)
+		status = p->exit_status;
+
   debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
-  
+
   /* Later tests DEPEND on this output to work correct. You will have
    * to find the actual exit status in your process list. It is
    * important to do this printf BEFORE you tell the parent process
@@ -238,11 +256,11 @@ process_cleanup (void)
    * possibly before the printf is completed.)
    */
   printf("%s: exit(%d)\n", thread_name(), status);
-  
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-  if (pd != NULL) 
-    {
+  if (pd != NULL)
+  {
       /* Correct ordering here is crucial.  We must set
          cur->pagedir to NULL before switching page directories,
          so that a timer interrupt can't switch back to the
@@ -253,7 +271,7 @@ process_cleanup (void)
       cur->pagedir = NULL;
       pagedir_activate (NULL);
       pagedir_destroy (pd);
-    }  
+  }
   debug("%s#%d: process_cleanup() DONE with status %d\n",
         cur->name, cur->tid, status);
 }
@@ -273,4 +291,3 @@ process_activate (void)
      interrupts. */
   tss_update ();
 }
-
