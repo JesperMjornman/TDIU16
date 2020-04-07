@@ -83,14 +83,14 @@ syscall_handler (struct intr_frame *f)
 			{
 				for(int i = 0; i < buf_s; ++i)
 				{
-					char tmp = input_getc();
+					uint8_t tmp = input_getc();
 
 					if(tmp == '\r')
 						tmp = '\n';
-
 					buf[i] = tmp;
-					f->eax = buf_s;
+					putbuf(&buf[i], 1);
 				}
+				f->eax = buf_s;
 			}
 			else
 				f->eax = -1;
