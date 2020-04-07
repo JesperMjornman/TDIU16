@@ -108,7 +108,7 @@ syscall_handler (struct intr_frame *f)
 				f->eax = buf_s;
 			}
 			else
-				f->eax = -1; // Err.
+				f->eax = -1;
 			break;
 		}
 		case SYS_SEEK:
