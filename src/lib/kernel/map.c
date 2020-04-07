@@ -1,14 +1,8 @@
-<<<<<<< HEAD
-#include "map.h"
-#include <stdlib.h>
-#include <stdio.h>
-=======
 #include "lib/kernel/map.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include "threads/malloc.h"
 
->>>>>>> dev
 void map_init(struct map* m)
 {
 	list_init(&m->content);
@@ -17,11 +11,7 @@ void map_init(struct map* m)
 
 key_t map_insert(struct map* m, value_t v)
 {
-<<<<<<< HEAD
-	struct association *new_elem = malloc(sizeof(struct association));
-=======
 	struct association *new_elem = (struct association*)malloc(sizeof(struct association));
->>>>>>> dev
 	new_elem->key = m->next_key++;
 	new_elem->value = v;
 
@@ -29,8 +19,6 @@ key_t map_insert(struct map* m, value_t v)
 	return new_elem->key;
 }
 
-<<<<<<< HEAD
-=======
 bool map_insert_from_key(struct map *m, value_t v, key_t k)
 {
 	if (map_find(m, k) != NULL)
@@ -44,7 +32,6 @@ bool map_insert_from_key(struct map *m, value_t v, key_t k)
 	return true;
 }
 
->>>>>>> dev
 value_t map_find(struct map* m, key_t k)
 {
 	struct association *e = map_find_associative(m, k);
@@ -83,11 +70,7 @@ void map_remove_if(struct map* m,
 		struct association *e = list_entry(it, struct association, elem);
 		if (cond(e->key, e->value, aux))
 		{
-<<<<<<< HEAD
-			it = map_remove_from_pointer(m, e);
-=======
 			it = map_remove_from_pointer(e);
->>>>>>> dev
 			it = list_prev(it);
 		}
 	}
@@ -104,11 +87,7 @@ struct association *map_find_associative(struct map *m, key_t k)
 	return NULL;
 }
 
-<<<<<<< HEAD
-struct list_elem *map_remove_from_pointer(struct map *m, struct association *it)
-=======
 struct list_elem *map_remove_from_pointer(struct association *it)
->>>>>>> dev
 {
 	struct list_elem *tmp = list_remove(&it->elem);
 	free(it);
@@ -121,11 +100,7 @@ size_t free_all_mem(struct map *m)
 	while(it != list_end(&m->content))
 	{
 		struct association *e = list_entry(it, struct association, elem);
-<<<<<<< HEAD
-		it = map_remove_from_pointer(m, e);
-=======
 		it = map_remove_from_pointer(e);
->>>>>>> dev
 	}
 	return(!list_size(&m->content));
 }
