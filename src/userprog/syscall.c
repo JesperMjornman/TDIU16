@@ -15,7 +15,8 @@
 #include "devices/input.h"
 
 static void syscall_handler (struct intr_frame *);
-
+static int sys_read(int fd, char *buf, int len);
+static int sys_write(int fd, char *buf, int len);
 void
 syscall_init (void)
 {
@@ -76,39 +77,12 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_READ:
 		{
-			int fd = esp[1];
-			char *buf = (char*)esp[2];
-			int buf_s = esp[3];
-			if(fd == STDIN_FILENO)
-			{
-				for(int i = 0; i < buf_s; ++i)
-				{
-					uint8_t tmp = input_getc();
-
-					if(tmp == '\r')
-						tmp = '\n';
-					buf[i] = tmp;
-					putbuf(&buf[i], 1);
-				}
-				f->eax = buf_s;
-			}
-			else
-				f->eax = -1;
+			f->eax = sys_read(esp[1], (char*)esp[2], esp[3]);
 			break;
 		}
 		case SYS_WRITE:
 		{
-			int fd = esp[1];
-			char *buf = (char*)esp[2];
-			int buf_s = esp[3];
-
-			if(fd == STDOUT_FILENO)
-			{
-				putbuf(buf, buf_s);
-				f->eax = buf_s;
-			}
-			else
-				f->eax = -1;
+			f->eax = sys_write(esp[1], (char*)esp[2], esp[3]);
 			break;
 		}
 		case SYS_SEEK:
@@ -141,4 +115,46 @@ syscall_handler (struct intr_frame *f)
       thread_exit ();
     }
   }
+}
+
+static int sys_read(int fd, char *buf, int len)
+{
+	int n_char = 0;
+	if(fd == STDIN_FILENO)
+	{
+		while(n_char != len)
+		{
+			uint8_t tmp = input_getc();
+
+			if(tmp == '\r')
+				tmp = '\n';
+			else if(tmp == 127)
+			{
+				if(n_char == 0)
+				{
+					continue;
+				}
+
+				buf[--n_char] = 0;
+				putbuf("\b \b", 3);
+				continue;
+			}
+			buf[n_char] = tmp;
+			putbuf(&buf[n_char], 1);
+			++n_char;
+		}
+		return len;
+	}
+	else
+		return -1;
+}
+static int sys_write(int fd, char *buf, int len)
+{
+	if(fd == STDOUT_FILENO)
+	{
+		putbuf(buf, len);
+		return len;
+	}
+	else
+		return -1;
 }
