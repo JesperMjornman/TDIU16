@@ -46,18 +46,22 @@ syscall_handler (struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
 	int sys_read_arg_count = argc[ esp[0] ];
-	debug("Sys call to : %d", (int)esp[0]);
+
   switch ( esp[0] /* retrive syscall number */ ) // syscall number top of stack
   {
 		case SYS_HALT:
+		{
 			debug("CALLED: SYS_HALT\n");
 			power_off();
 			break;
+		}
 		case SYS_EXIT:
+		{
 			debug("CALLED: SYS_EXIT, CODE (%d)\n", (int)esp[1]);
-			process_exit((int)esp[1]); // Set exit code for process.
-			thread_exit(); 				// Close current thread.
+			process_exit((int)esp[1]);  // Set exit code for process.
+			thread_exit(); 							// Close current thread.
 			break;
+		}
 		case SYS_EXEC:
 			break;
 		case SYS_WAIT:
@@ -71,9 +75,42 @@ syscall_handler (struct intr_frame *f)
 		case SYS_FILESIZE:
 			break;
 		case SYS_READ:
+		{
+			int fd = esp[1];
+			char *buf = (char*)esp[2];
+			int buf_s = esp[3];
+			if(fd == STDIN_FILENO)
+			{
+				for(int i = 0; i < buf_s; ++i)
+				{
+					char tmp = input_getc();
+
+					if(tmp == '\r')
+						tmp = '\n';
+
+					buf[i] = tmp;
+					f->eax = buf_s;
+				}
+			}
+			else
+				f->eax = -1;
 			break;
+		}
 		case SYS_WRITE:
+		{
+			int fd = esp[1];
+			char *buf = (char*)esp[2];
+			int buf_s = esp[3];
+
+			if(fd == STDOUT_FILENO)
+			{
+				putbuf(buf, buf_s);
+				f->eax = buf_s;
+			}
+			else
+				f->eax = -1; // Err.
 			break;
+		}
 		case SYS_SEEK:
 			break;
 		case SYS_TELL:
