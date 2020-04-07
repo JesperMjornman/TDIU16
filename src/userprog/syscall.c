@@ -58,6 +58,42 @@ syscall_handler (struct intr_frame *f)
 			process_exit((int)esp[1]); // Set exit code for process.
 			thread_exit(); 				// Close current thread.
 			break;
+		case SYS_EXEC:
+			break;
+		case SYS_WAIT:
+			break;
+		case SYS_CREATE:
+			break;
+		case SYS_REMOVE:
+			break;
+		case SYS_OPEN:
+			break;
+		case SYS_FILESIZE:
+			break;
+		case SYS_READ:
+			break;
+		case SYS_WRITE:
+			break;
+		case SYS_SEEK:
+			break;
+		case SYS_TELL:
+			break;
+		case SYS_CLOSE:
+			break;
+		case SYS_MMAP:
+			break;
+		case SYS_MUNMAP:
+			break;
+		case SYS_CHDIR:
+			break;
+		case SYS_MKDIR:
+			break;
+		case SYS_READDIR:
+			break;
+		case SYS_ISDIR:
+			break;
+		case SYS_INUMBER:
+			break;
     default:
     {
       printf ("Executed an unknown system call!\n");
