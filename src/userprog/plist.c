@@ -1,6 +1,10 @@
 #include <stddef.h>
 #include "userprog/plist.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
+
+//struct lock process_lock;
+
 void plist_init(struct map *pl)
 {
 	map_init(pl);
@@ -38,9 +42,10 @@ value_t plist_remove(struct map* pl, key_t k)
 	struct processInfo *e = map_find_associative(pl, k)->value;
 	if(e != NULL)
 	{
-		e->alive = false;
 		if(e->parent_pid == k)
 			e->parent_alive = false;
+		else
+			e->alive = false;
 
 		plist_remove_if(pl, &plist_to_be_erased, 0);
 	}
@@ -50,7 +55,7 @@ value_t plist_remove(struct map* pl, key_t k)
 bool plist_to_be_erased(key_t k UNUSED, value_t v, int aux UNUSED)
 {
 	struct processInfo *p = v;
-	return(!(p->alive || p->parent_alive));
+	return((!p->alive && !p->parent_alive));
 }
 
 size_t plist_free_all_mem(struct map *pl)

@@ -43,6 +43,7 @@ void process_exit(int status)
 {
 	struct processInfo *p = map_find_associative(&process_list, thread_current()->tid)->value;
 	p->exit_status = status;
+	debug("Exiting process: %d, status %d", p->pid, p->exit_status);
 }
 
 /* Print a list of all running processes. The list shall include all

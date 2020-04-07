@@ -45,6 +45,8 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
+	int sys_read_arg_count = argc[ esp[0] ];
+	debug("Sys call to : %d", (int)esp[0]);
   switch ( esp[0] /* retrive syscall number */ ) // syscall number top of stack
   {
 		case SYS_HALT:
@@ -52,8 +54,8 @@ syscall_handler (struct intr_frame *f)
 			power_off();
 			break;
 		case SYS_EXIT:
-			debug("CALLED: SYS_EXIT, CODE (%d)\n", esp[1]);
-			process_exit(esp[1]); // Set exit code for process.
+			debug("CALLED: SYS_EXIT, CODE (%d)\n", (int)esp[1]);
+			process_exit((int)esp[1]); // Set exit code for process.
 			thread_exit(); 				// Close current thread.
 			break;
     default:
