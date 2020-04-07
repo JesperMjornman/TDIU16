@@ -43,7 +43,7 @@ void process_exit(int status)
 {
 	struct processInfo *p = map_find_associative(&process_list, thread_current()->tid)->value;
 	p->exit_status = status;
-	debug("Exiting process: %d, status %d", p->pid, p->exit_status);
+	debug("Exiting process: %d, status %d\n", p->pid, p->exit_status);
 }
 
 /* Print a list of all running processes. The list shall include all
@@ -57,6 +57,7 @@ struct parameters_to_start_process
 {
   char* command_line;
 	int parent_pid;
+	struct semaphore sema;
 };
 
 static void
@@ -93,7 +94,7 @@ process_execute (const char *command_line)
 
 	// Set parent
 	arguments.parent_pid = thread_current()->tid;
-
+	//semaphore_init(&arugments.sema);
 	/* SCHEDULES function `start_process' to run (LATER) */
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
