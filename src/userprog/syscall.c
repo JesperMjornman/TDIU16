@@ -162,7 +162,7 @@ static int sys_read(int fd, char *buf, int len)
 	else if(fd > 1)
 	{
 		struct file *fp = map_find(&thread_current()->f_map, fd);
-		if(fp == NULL)
+		if(fp == NULL) /* Is the file open? */
 			return -1;
 
 		return file_read(fp, buf, len);
