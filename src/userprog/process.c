@@ -8,6 +8,7 @@
 #include "userprog/pagedir.h"  /* pagedir_activate etc. */
 #include "userprog/tss.h"      /* tss_update */
 #include "filesys/file.h"
+#include "filesys/filesys.h"
 #include "threads/flags.h"     /* FLAG_* constants */
 #include "threads/thread.h"
 #include "threads/vaddr.h"     /* PHYS_BASE */
@@ -258,6 +259,10 @@ process_cleanup (void)
    */
   printf("%s: exit(%d)\n", thread_name(), status);
 
+	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
+		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
+	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   if (pd != NULL)
@@ -273,6 +278,8 @@ process_cleanup (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
   }
+
+
   debug("%s#%d: process_cleanup() DONE with status %d\n",
         cur->name, cur->tid, status);
 }

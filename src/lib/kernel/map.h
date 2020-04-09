@@ -24,6 +24,13 @@ struct map
 
 void map_init(struct map* m);
 
+/**
+	 Use with caution, incrementing next_key might interfere with other functions.
+	 Is used for file mapping, otherwise set the keys.
+
+	 Inserts and returns key, in the case of file mapping returns fd.
+	 Using map_insert starts from key = 2 and then increments for each element.
+ */
 key_t map_insert(struct map* m, value_t v);
 bool map_insert_from_key(struct map *m, value_t v, key_t k);
 value_t map_find(struct map* m, key_t k);
