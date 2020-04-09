@@ -259,7 +259,7 @@ process_cleanup (void)
    */
   printf("%s: exit(%d)\n", thread_name(), status);
 
-	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file map */
+	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
 		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
 	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
 

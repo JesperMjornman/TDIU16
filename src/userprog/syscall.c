@@ -96,8 +96,10 @@ syscall_handler (struct intr_frame *f)
 			f->eax = sys_write(esp[1], (char*)esp[2], esp[3]);
 			break;
 		case SYS_SEEK:
+			sys_seek((int)esp[1], esp[2]);
 			break;
 		case SYS_TELL:
+			f->eax = sys_tell((int)esp[1]);
 			break;
 		case SYS_CLOSE:
 			sys_close((int)esp[1]);
@@ -179,7 +181,7 @@ static int sys_write(int fd, char *buf, int len)
 	else if(fd > 1)
 	{
 		/*
-		   Find file in current threads file map
+		   Find file in current thread's file map
 			 Not found -> return -1
 		 */
 		struct file *fp = map_find(&thread_current()->f_map, fd);
@@ -224,6 +226,7 @@ static int sys_remove(const char *fname)
 {
 	return filesys_remove(fname);
 }
+
 static int sys_filesize(int fd)
 {
 	struct file *fp = map_find(&thread_current()->f_map, fd);
@@ -235,9 +238,22 @@ static int sys_filesize(int fd)
 
 static unsigned sys_tell(int fd)
 {
+	if(fd < 2)
+		return -1;
 
+	struct file *fp = map_find(&thread_current()->f_map, fd);
+	if(fp == NULL)
+		return -1;
+
+	return file_tell(fp);
 }
+
 static void sys_seek(int fd, unsigned position)
 {
-
+	if(fd > 1) /* Has to be a file */
+	{
+		struct file *fp = map_find(&thread_current()->f_map, fd);
+		if(fp != NULL)
+			file_seek(fp, position);
+	}
 }
