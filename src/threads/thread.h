@@ -94,8 +94,20 @@ struct thread
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
-    /* YES! You may want to add stuff. But make note of point 2 above. */
-		struct map f_map; // File map for thread.
+    /*
+			File map for individual thread.
+			Remember potential typecasting as the map
+			ueses value_t defined as void*
+
+			Should contain all relevant functionality for usage in thread,
+			except for size handling. Should possibly move to specific
+			flist.c implementation, mainly for insertion of new "files".
+			(Or handle in sys-call, defining a macro for MAX_FMAP_SIZE)
+
+			Freeing memory of f_map should be done with caution;
+			not freeing elements value unless needed
+		 */
+		struct map f_map; 									/* File list */
 
 #ifdef USERPROG
     /* Owned by userprog/process.c. */

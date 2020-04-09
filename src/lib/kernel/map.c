@@ -6,11 +6,14 @@
 void map_init(struct map* m)
 {
 	list_init(&m->content);
-	m->next_key = 0;
+	m->next_key = 2;
 }
 
 key_t map_insert(struct map* m, value_t v)
 {
+	if(map_find(m, m->next_key + 1))
+		return -1; // Error in insertion.
+
 	struct association *new_elem = (struct association*)malloc(sizeof(struct association));
 	new_elem->key = m->next_key++;
 	new_elem->value = v;

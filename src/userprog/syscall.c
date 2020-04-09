@@ -15,8 +15,18 @@
 #include "devices/input.h"
 
 static void syscall_handler (struct intr_frame *);
+static void sys_seek(int fd, unsigned position);
+static void sys_close(int fd);
+
 static int sys_read(int fd, char *buf, int len);
 static int sys_write(int fd, char *buf, int len);
+static int sys_open(const char *fname);
+static int sys_create(const char *fname, unsigned init_size);
+static int sys_remove(const char *fname);
+static int sys_filesize(int fd);
+
+static unsigned sys_tell(int fd);
+
 void
 syscall_init (void)
 {
@@ -68,28 +78,29 @@ syscall_handler (struct intr_frame *f)
 		case SYS_WAIT:
 			break;
 		case SYS_CREATE:
+			f->eax = sys_create((const char*)esp[1], esp[2]);
 			break;
 		case SYS_REMOVE:
+			f->eax = sys_remove((const char*)esp[1]);
 			break;
 		case SYS_OPEN:
+			f->eax = sys_open((const char*)esp[1]);
 			break;
 		case SYS_FILESIZE:
+			f->eax = sys_filesize((int)esp[1]);
 			break;
 		case SYS_READ:
-		{
 			f->eax = sys_read(esp[1], (char*)esp[2], esp[3]);
 			break;
-		}
 		case SYS_WRITE:
-		{
 			f->eax = sys_write(esp[1], (char*)esp[2], esp[3]);
 			break;
-		}
 		case SYS_SEEK:
 			break;
 		case SYS_TELL:
 			break;
 		case SYS_CLOSE:
+			sys_close((int)esp[1]);
 			break;
 		case SYS_MMAP:
 			break;
@@ -120,6 +131,7 @@ syscall_handler (struct intr_frame *f)
 static int sys_read(int fd, char *buf, int len)
 {
 	int n_char = 0;
+
 	if(fd == STDIN_FILENO)
 	{
 		while(n_char != len)
@@ -128,7 +140,7 @@ static int sys_read(int fd, char *buf, int len)
 
 			if(tmp == '\r')
 				tmp = '\n';
-			else if(tmp == 127)
+			else if(tmp == 127) /* Handle backspace for deletion of characters in buffer (Note: only in terminal!) */
 			{
 				if(n_char == 0)
 				{
@@ -145,9 +157,18 @@ static int sys_read(int fd, char *buf, int len)
 		}
 		return len;
 	}
+	else if(fd > 1)
+	{
+		struct file *fp = map_find(&thread_current()->f_map, fd);
+		if(fp == NULL)
+			return -1;
+
+		return file_read(fp, buf, len);
+	}
 	else
 		return -1;
 }
+
 static int sys_write(int fd, char *buf, int len)
 {
 	if(fd == STDOUT_FILENO)
@@ -155,6 +176,68 @@ static int sys_write(int fd, char *buf, int len)
 		putbuf(buf, len);
 		return len;
 	}
+	else if(fd > 1)
+	{
+		/*
+		   Find file in current threads file map
+			 Not found -> return -1
+		 */
+		struct file *fp = map_find(&thread_current()->f_map, fd);
+		if(fp == NULL)
+			return -1;
+
+		return file_write(fp, buf, len);
+	}
 	else
 		return -1;
+}
+
+static int sys_open(const char *fname)
+{
+	struct file *fp = filesys_open(fname);
+	if(fp == NULL)
+		return -1;
+	/* Save fd to current threads open file-map */
+	int fd = map_insert(&thread_current()->f_map, fp);
+	if(fd == -1) /* On failure of insertion */
+		filesys_close(fp);
+
+	return fd;
+}
+
+static int sys_create(const char *fname, unsigned init_size)
+{
+	return filesys_create(fname, init_size);
+}
+
+static void sys_close(int fd)
+{
+	if(fd > 1) /* Malicious user defense */
+	{
+		filesys_close(map_find(&thread_current()->f_map, fd));
+		/* Remove from f_map as file is closed */
+		map_remove(&thread_current()->f_map, fd);
+	}
+}
+
+static int sys_remove(const char *fname)
+{
+	return filesys_remove(fname);
+}
+static int sys_filesize(int fd)
+{
+	struct file *fp = map_find(&thread_current()->f_map, fd);
+	if(fp == NULL)
+		return -1;
+
+	return file_length(fp);
+}
+
+static unsigned sys_tell(int fd)
+{
+
+}
+static void sys_seek(int fd, unsigned position)
+{
+
 }
