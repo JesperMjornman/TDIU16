@@ -22,7 +22,7 @@
 
 #include "userprog/flist.h"
 #include "userprog/plist.h"
-
+#include "userprog/setup-argv.h"
 /* HACK defines code you must remove and implement in a proper way */
 #define HACK
 
@@ -103,6 +103,7 @@ process_execute (const char *command_line)
   process_id = thread_id;
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
+	// Leta upp process_id i plist och se om den existerar?
   power_off();
 
 
@@ -160,8 +161,8 @@ start_process (struct parameters_to_start_process* parameters)
        C-function expects the stack to contain, in order, the return
        address, the first argument, the second argument etc. */
 
-    HACK if_.esp -= 12; /* Unacceptable solution. */
-
+    //HACK if_.esp -= 12; /* Unacceptable solution. FIXED? Works with sumargv and sys_call tests. */
+		if_.esp = setup_main_stack(parameters->command_line, if_.esp);
 		map_insert_from_key(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
 		debug("Added process: %d, Child to: %d\n", thread_current()->tid, parameters->parent_pid);
 

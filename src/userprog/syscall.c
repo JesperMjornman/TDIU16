@@ -154,8 +154,7 @@ static int sys_read(int fd, char *buf, int len)
 				continue;
 			}
 			buf[n_char] = tmp;
-			putbuf(&buf[n_char], 1);
-			++n_char;
+			putbuf(&buf[n_char++], 1);
 		}
 		return len;
 	}
