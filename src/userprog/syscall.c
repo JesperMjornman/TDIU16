@@ -15,12 +15,12 @@
 #include "devices/input.h"
 
 static void syscall_handler (struct intr_frame *);
-static void sys_seek(int fd, unsigned position);
+static void sys_seek (int fd, unsigned position);
 static void sys_close(int fd);
 
-static int sys_read(int fd, char *buf, int len);
+static int sys_read (int fd, char *buf, int len);
 static int sys_write(int fd, char *buf, int len);
-static int sys_open(const char *fname);
+static int sys_open  (const char *fname);
 static int sys_create(const char *fname, unsigned init_size);
 static int sys_remove(const char *fname);
 static int sys_filesize(int fd);
