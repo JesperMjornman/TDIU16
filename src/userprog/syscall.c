@@ -199,7 +199,7 @@ static int sys_open(const char *fname)
 	struct file *fp = filesys_open(fname);
 	if(fp == NULL)
 		return -1;
-	/* Save fd to current threads open file-map */
+	/* Save fp to current thread's open file map */
 	int fd = map_insert(&thread_current()->f_map, fp);
 	if(fd == -1) /* On failure of insertion */
 		filesys_close(fp);
