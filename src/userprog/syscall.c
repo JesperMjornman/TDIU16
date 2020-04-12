@@ -214,7 +214,7 @@ static int sys_create(const char *fname, unsigned init_size)
 
 static void sys_close(int fd)
 {
-	if(fd > 1) /* Malicious user defense */
+	if(fd > 1) /* fd < 2 is STDIN/STDOUT, use to avoid errors. */
 	{
 		filesys_close(map_find(&thread_current()->f_map, fd));
 		/* Remove from f_map as file is closed */
