@@ -15,12 +15,12 @@
 #include "devices/input.h"
 
 static void syscall_handler (struct intr_frame *);
-static void sys_seek(int fd, unsigned position);
+static void sys_seek (int fd, unsigned position);
 static void sys_close(int fd);
 
-static int sys_read(int fd, char *buf, int len);
+static int sys_read (int fd, char *buf, int len);
 static int sys_write(int fd, char *buf, int len);
-static int sys_open(const char *fname);
+static int sys_open  (const char *fname);
 static int sys_create(const char *fname, unsigned init_size);
 static int sys_remove(const char *fname);
 static int sys_filesize(int fd);
@@ -63,7 +63,7 @@ syscall_handler (struct intr_frame *f)
 		case SYS_HALT:
 		{
 			debug("CALLED: SYS_HALT\n");
-			power_off();
+			power_off(); // Frigör minne för listor.
 			break;
 		}
 		case SYS_EXIT:
@@ -142,17 +142,18 @@ static int sys_read(int fd, char *buf, int len)
 
 			if(tmp == '\r')
 				tmp = '\n';
+			else if(tmp < 32) 	/* To handle special buttons when asking for input. */
+				continue;
 			else if(tmp == 127) /* Handle backspace for deletion of characters in buffer (Note: only in terminal!) */
 			{
 				if(n_char == 0)
-				{
 					continue;
-				}
 
 				buf[--n_char] = 0;
 				putbuf("\b \b", 3);
 				continue;
 			}
+
 			buf[n_char] = tmp;
 			putbuf(&buf[n_char++], 1);
 		}

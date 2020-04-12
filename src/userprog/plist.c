@@ -3,8 +3,6 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
-//struct lock process_lock;
-
 void plist_init(struct map *pl)
 {
 	map_init(pl);
@@ -13,7 +11,7 @@ void plist_init(struct map *pl)
 void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED)
 {
 	struct processInfo *p = v;
-	printf("%6d  %8d  %14d %9d %11d \n",
+	debug("|%5d  |%7d  |%13d  |%7d  |%9d  |\n",
 					p->pid,
 					p->parent_pid,
 					p->exit_status,
@@ -23,7 +21,8 @@ void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED)
 
 void plist_print(struct map *pl)
 {
-	printf("|  PID  |  P-PID  |  EXIT-STATUS  |  ALIVE  |  P-ALIVE  |\n");
+	debug("|__PID__|__P-PID__|__EXIT-STATUS__|__ALIVE__|__P-ALIVE__|\n");
+	//debug("---------------------------------------------------------\n");
 	map_for_each(pl, &plist_print_format, 0);
 }
 
@@ -55,7 +54,7 @@ value_t plist_remove(struct map* pl, key_t k)
 bool plist_to_be_erased(key_t k UNUSED, value_t v, int aux UNUSED)
 {
 	struct processInfo *p = v;
-	return((!p->alive && !p->parent_alive));
+	return(!(p->alive || p->parent_alive));
 }
 
 size_t plist_free_all_mem(struct map *pl)
@@ -76,7 +75,7 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 	struct processInfo *p = malloc(sizeof(struct processInfo));
 	p->pid = pid;
 	p->parent_pid = parent_pid;
-	p->exit_status = 0;
+	p->exit_status = 0; // sätt till typ -1? Om något går fel borde den inte avsluta med 0. 
 	p->alive = 1;
 	p->parent_alive = 1;
 

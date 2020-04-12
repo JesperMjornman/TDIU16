@@ -249,7 +249,7 @@ process_cleanup (void)
 	if(p != NULL)
 		status = p->exit_status;
 
-  debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
+	debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
 
   /* Later tests DEPEND on this output to work correct. You will have
    * to find the actual exit status in your process list. It is
@@ -263,8 +263,10 @@ process_cleanup (void)
 	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
 		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
 	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
+	plist_remove(&process_list, cur->tid);														/* Remove process if parent from active list (if parent is dead) */
+	//plist_print(&process_list);																				/* Debug */
 
-  /* Destroy the current process's page directory and switch back
+	/* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   if (pd != NULL)
   {
