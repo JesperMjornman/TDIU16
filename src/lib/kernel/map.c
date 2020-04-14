@@ -11,7 +11,7 @@ void map_init(struct map* m)
 
 key_t map_insert(struct map* m, value_t v)
 {
-	if(map_find(m, m->next_key + 1))
+	if(map_find(m, m->next_key))
 		return -1; // Error in insertion.
 
 	struct association *new_elem = (struct association*)malloc(sizeof(struct association));

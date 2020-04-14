@@ -58,12 +58,12 @@ syscall_handler (struct intr_frame *f)
   int32_t* esp = (int32_t*)f->esp;
 	//int sys_read_arg_count = argc[ esp[0] ];
 
-  switch ( esp[0] /* retrive syscall number */ ) // syscall number top of stack
+  switch ( esp[0] /* retrive syscall number */ )
   {
 		case SYS_HALT:
 		{
 			debug("CALLED: SYS_HALT\n");
-			power_off(); // Frigör minne för listor.
+			power_off(); // Frigör minne för listor(process) någonstans också.
 			break;
 		}
 		case SYS_EXIT:
@@ -78,7 +78,7 @@ syscall_handler (struct intr_frame *f)
 		case SYS_WAIT:
 			break;
 		case SYS_CREATE:
-			f->eax = sys_create((const char*)esp[1], esp[2]);
+			f->eax = sys_create((const char*)esp[1], (unsigned)esp[2]);
 			break;
 		case SYS_REMOVE:
 			f->eax = sys_remove((const char*)esp[1]);
@@ -90,13 +90,13 @@ syscall_handler (struct intr_frame *f)
 			f->eax = sys_filesize((int)esp[1]);
 			break;
 		case SYS_READ:
-			f->eax = sys_read(esp[1], (char*)esp[2], esp[3]);
+			f->eax = sys_read((int)esp[1], (char*)esp[2], (int)esp[3]);
 			break;
 		case SYS_WRITE:
-			f->eax = sys_write(esp[1], (char*)esp[2], esp[3]);
+			f->eax = sys_write((int)esp[1], (char*)esp[2], (int)esp[3]);
 			break;
 		case SYS_SEEK:
-			sys_seek((int)esp[1], esp[2]);
+			sys_seek((int)esp[1], (unsigned)esp[2]);
 			break;
 		case SYS_TELL:
 			f->eax = sys_tell((int)esp[1]);
@@ -229,6 +229,9 @@ static int sys_remove(const char *fname)
 
 static int sys_filesize(int fd)
 {
+	if(fd < 2)
+		return -1;
+
 	struct file *fp = map_find(&thread_current()->f_map, fd);
 	if(fp == NULL)
 		return -1;
