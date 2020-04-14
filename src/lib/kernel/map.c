@@ -15,6 +15,9 @@ key_t map_insert(struct map* m, value_t v)
 		return -1; // Error in insertion.
 
 	struct association *new_elem = (struct association*)malloc(sizeof(struct association));
+	if(new_elem == NULL)
+		return -1;
+		
 	new_elem->key = m->next_key++;
 	new_elem->value = v;
 
@@ -28,6 +31,9 @@ int map_insert_from_key(struct map *m, value_t v, key_t k)
 		return -1;
 
 	struct association *new_elem = malloc(sizeof(struct association));
+	if(new_elem == NULL)
+		return -1;
+
 	new_elem->key = k;
 	new_elem->value = v;
 
