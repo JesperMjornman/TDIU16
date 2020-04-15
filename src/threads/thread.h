@@ -108,11 +108,11 @@ struct thread
 			Freeing memory of f_map should be done with caution,
 			preferably avoid allocating memory specific to the map.
 
-			(Maybe move into USERPROG check?)
+			
 		 */
-		struct map f_map; 									/* File list */
 
 #ifdef USERPROG
+	struct map f_map; 									/* File list */
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif
