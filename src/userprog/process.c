@@ -58,6 +58,7 @@ struct parameters_to_start_process
 {
   char* command_line;
 	int parent_pid;
+	int ret_id;
 	struct semaphore sema;
 };
 
@@ -95,7 +96,8 @@ process_execute (const char *command_line)
 
 	// Set parent
 	arguments.parent_pid = thread_current()->tid;
-	//semaphore_init(&arugments.sema);
+	sema_init(&arguments.sema, 0);
+	arguments.ret_id = -1;
 	/* SCHEDULES function `start_process' to run (LATER) */
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
@@ -103,9 +105,11 @@ process_execute (const char *command_line)
   process_id = thread_id;
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
-	// Leta upp process_id i plist och se om den existerar?
-  power_off();
-
+  if(process_id != -1)
+	{
+		sema_down(&arguments.sema);
+		process_id = arguments.ret_id;
+	}
 
   /* WHICH thread may still be using this right now? */
   free(arguments.command_line);
@@ -163,9 +167,9 @@ start_process (struct parameters_to_start_process* parameters)
 
     //HACK if_.esp -= 12; /* Unacceptable solution. FIXED? Works with sumargv and sys_call tests. */
 		if_.esp = setup_main_stack(parameters->command_line, if_.esp);
-		map_insert_from_key(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
+		plist_insert(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
 		debug("Added process: %d, Child to: %d\n", thread_current()->tid, parameters->parent_pid);
-
+		parameters->ret_id = thread_current()->tid;
 
 		    /* The stack and stack pointer should be setup correct just before
        the process start, so this is the place to dump stack content
@@ -180,7 +184,7 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->tid,
         parameters->command_line);
 
-
+	sema_up(&parameters->sema);
   /* If load fail, quit. Load may fail for several reasons.
      Some simple examples:
      - File doeas not exist
@@ -218,7 +222,9 @@ process_wait (int child_id)
 
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
-  /* Yes! You need to do something good here ! */
+	struct processInfo *p = map_find(&process_list, child_id);
+	//if(p != NULL)
+
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);
 
@@ -244,11 +250,6 @@ process_cleanup (void)
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
 
-	/* Set status to exit_status. */
-	struct processInfo *p = map_find(&process_list, cur->tid);
-	if(p != NULL)
-		status = p->exit_status;
-
 	debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
 
   /* Later tests DEPEND on this output to work correct. You will have
@@ -258,13 +259,20 @@ process_cleanup (void)
    * that may sometimes poweroff as soon as process_wait() returns,
    * possibly before the printf is completed.)
    */
+
+	 /* Set status to exit_status. */
+	 struct processInfo *p = map_find(&process_list, cur->tid);
+	 if(p != NULL)
+		 status = p->exit_status;
+
   printf("%s: exit(%d)\n", thread_name(), status);
 
 	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
 		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
 	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
-	plist_remove(&process_list, cur->tid);														/* Remove process if parent from active list (if parent is dead) */
-	//plist_print(&process_list);																				/* Debug */
+	if(p != NULL)
+		plist_remove(&process_list, cur->tid);													/* Remove process if parent from active list (if parent is dead), fix new search problem. */
+	//plist_print(&process_list);																			/* Debug */
 
 	/* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

@@ -1,7 +1,7 @@
 #include <stddef.h>
 #include "userprog/plist.h"
 #include "threads/malloc.h"
-#include "threads/synch.h"
+
 
 void plist_init(struct map *pl)
 {
@@ -28,6 +28,8 @@ void plist_print(struct map *pl)
 
 int plist_insert(struct map *pl, value_t *v, key_t k)
 {
+	//struct processInfo *p = (struct processInfo*)v;
+	//sema_init(&p->sema, 0);
 	return map_insert_from_key(pl, v, k);
 }
 
@@ -75,7 +77,7 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 	struct processInfo *p = malloc(sizeof(struct processInfo));
 	p->pid = pid;
 	p->parent_pid = parent_pid;
-	p->exit_status = 0; // sätt till typ -1? Om något går fel borde den inte avsluta med 0. 
+	p->exit_status = 0; // sätt till typ -1? Om något går fel borde den inte avsluta med 0.
 	p->alive = 1;
 	p->parent_alive = 1;
 

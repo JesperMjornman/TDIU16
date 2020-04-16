@@ -63,6 +63,7 @@ syscall_handler (struct intr_frame *f)
 		case SYS_HALT:
 		{
 			debug("CALLED: SYS_HALT\n");
+			free_all_mem(&process_list);
 			power_off(); // Frigör minne för listor(process) någonstans också.
 			break;
 		}
@@ -74,6 +75,7 @@ syscall_handler (struct intr_frame *f)
 			break;
 		}
 		case SYS_EXEC:
+			f->eax = process_execute((const char*)esp[1]);
 			break;
 		case SYS_WAIT:
 			break;

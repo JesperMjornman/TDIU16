@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include "lib/kernel/list.h"
 #include "lib/kernel/map.h"
-
+#include "threads/synch.h"
 /* Place functions to handle a running process here (process list).
 
    plist.h : Your function declarations and documentation.
@@ -39,6 +39,7 @@ struct processInfo
 	int exit_status;
 	bool alive;
 	bool parent_alive;
+	struct semaphore sema;
 };
 
 /*

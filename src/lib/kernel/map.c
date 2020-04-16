@@ -17,7 +17,7 @@ key_t map_insert(struct map* m, value_t v)
 	struct association *new_elem = (struct association*)malloc(sizeof(struct association));
 	if(new_elem == NULL)
 		return -1;
-		
+
 	new_elem->key = m->next_key++;
 	new_elem->value = v;
 
@@ -94,6 +94,15 @@ struct association *map_find_associative(struct map *m, key_t k)
 			return e;
 	}
 	return NULL;
+}
+
+value_t map_get_from_pointer(struct list_elem *it)
+{
+	if(it != NULL)
+	{
+		struct association *e = list_entry(it, struct association, elem);
+		return(e->value);
+	}
 }
 
 struct list_elem *map_remove_from_pointer(struct association *it)
