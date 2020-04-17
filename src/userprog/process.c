@@ -223,7 +223,7 @@ process_wait (int child_id)
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
 	struct processInfo *p = map_find(&process_list, child_id);
-	//if(p != NULL)
+	//if(p != NULL && cur->tid == p->parent_pid && p->alive)
 
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);

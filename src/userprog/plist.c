@@ -43,11 +43,7 @@ value_t plist_remove(struct map* pl, key_t k)
 	struct processInfo *e = map_find_associative(pl, k)->value;
 	if(e != NULL)
 	{
-		if(e->parent_pid == k)
-			e->parent_alive = false;
-		else
-			e->alive = false;
-
+		e->alive = false;
 		plist_remove_if(pl, &plist_to_be_erased, 0);
 	}
 	return NULL;
@@ -75,12 +71,15 @@ size_t plist_free_all_mem(struct map *pl)
 struct processInfo *plist_create_process(int pid, int parent_pid)
 {
 	struct processInfo *p = malloc(sizeof(struct processInfo));
-	p->pid = pid;
-	p->parent_pid = parent_pid;
-	p->exit_status = 0; // sätt till typ -1? Om något går fel borde den inte avsluta med 0.
-	p->alive = 1;
-	p->parent_alive = 1;
-
+	if(p != NULL)
+	{
+		p->pid = pid;
+		p->parent_pid = parent_pid;
+		p->exit_status = 0; // set to -1 if failure?
+		p->alive = 1;
+		p->parent_alive = 1;
+		sema_init(&p->sema, 0);
+  }
 	return p;
 }
 
