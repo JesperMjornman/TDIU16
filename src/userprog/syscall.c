@@ -12,11 +12,16 @@
 #include "threads/init.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "userprog/plist.h"
 #include "devices/input.h"
+#include "devices/timer.h"
 
 static void syscall_handler (struct intr_frame *);
 static void sys_seek (int fd, unsigned position);
 static void sys_close(int fd);
+static void sys_exit (int status);
+static void sys_halt (void);
+static void sys_plist(void);
 
 static int sys_read (int fd, char *buf, int len);
 static int sys_write(int fd, char *buf, int len);
@@ -49,7 +54,7 @@ const int argc[] = {
   /* not implemented */
   2, 1,    1, 1, 2, 1, 1,
   /* extended */
-  0
+  1, 0
 };
 
 static void
@@ -57,27 +62,19 @@ syscall_handler (struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
 	//int sys_read_arg_count = argc[ esp[0] ];
-
   switch ( esp[0] /* retrive syscall number */ )
   {
 		case SYS_HALT:
-		{
-			debug("CALLED: SYS_HALT\n");
-			free_all_mem(&process_list);
-			power_off(); // Frigör minne för listor(process) någonstans också.
+			sys_halt();
 			break;
-		}
 		case SYS_EXIT:
-		{
-			debug("CALLED: SYS_EXIT, CODE (%d)\n", (int)esp[1]);
-			process_exit((int)esp[1]);  // Set exit code for process.
-			thread_exit(); 							// Close current thread.
+			sys_exit((int)esp[1]);
 			break;
-		}
 		case SYS_EXEC:
 			f->eax = process_execute((const char*)esp[1]);
 			break;
 		case SYS_WAIT:
+			f->eax = process_wait((int)esp[1]);
 			break;
 		case SYS_CREATE:
 			f->eax = sys_create((const char*)esp[1], (unsigned)esp[2]);
@@ -119,6 +116,12 @@ syscall_handler (struct intr_frame *f)
 		case SYS_ISDIR:
 			break;
 		case SYS_INUMBER:
+			break;
+		case SYS_SLEEP:
+			timer_msleep((int)esp[1]);
+			break;
+		case SYS_PLIST:
+			sys_plist();
 			break;
     default:
     {
@@ -261,4 +264,21 @@ static void sys_seek(int fd, unsigned position)
 		if(fp != NULL)
 			file_seek(fp, position);
 	}
+}
+
+static void sys_halt(void)
+{
+	free_all_mem(&process_list);
+	power_off();
+}
+
+static void sys_exit(int status)
+{
+	process_exit(status);  				// Set exit code for process.
+	thread_exit(); 							// Close current thread.
+}
+
+static void sys_plist(void)
+{
+	plist_print(&process_list);
 }

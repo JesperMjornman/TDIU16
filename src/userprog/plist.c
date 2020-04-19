@@ -26,7 +26,7 @@ void plist_print(struct map *pl)
 	map_for_each(pl, &plist_print_format, 0);
 }
 
-int plist_insert(struct map *pl, value_t *v, key_t k)
+int plist_insert(struct map *pl, value_t v, key_t k)
 {
 	//struct processInfo *p = (struct processInfo*)v;
 	//sema_init(&p->sema, 0);
@@ -38,21 +38,22 @@ value_t plist_find(struct map* pl, key_t k)
 	return map_find(pl, k);
 }
 
-value_t plist_remove(struct map* pl, key_t k)
+int plist_remove(struct map* pl, key_t k)
 {
 	struct processInfo *e = map_find_associative(pl, k)->value;
 	if(e != NULL)
 	{
 		e->alive = false;
 		plist_remove_if(pl, &plist_to_be_erased, 0);
+		return 1;
 	}
-	return NULL;
+	return -1;
 }
 
 bool plist_to_be_erased(key_t k UNUSED, value_t v, int aux UNUSED)
 {
 	struct processInfo *p = v;
-	return(!(p->alive || p->parent_alive));
+	return(!p->alive && !p->parent_alive);
 }
 
 size_t plist_free_all_mem(struct map *pl)
@@ -75,10 +76,10 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 	{
 		p->pid = pid;
 		p->parent_pid = parent_pid;
-		p->exit_status = 0; // set to -1 if failure?
+		p->exit_status = 0; 				
 		p->alive = 1;
 		p->parent_alive = 1;
-		sema_init(&p->sema, 0);
+		sema_init(&p->sema, 0); 		// Move to actual insertion as it can fault there too?
   }
 	return p;
 }

@@ -31,9 +31,10 @@ enum
     SYS_INUMBER,                /* Returns the inode number for a fd. */
 
 		/* Custom system calls */
-		SYS_PLIST										/* Prints process list info. */
+		SYS_SLEEP,									/* Sleeps for x millis (busy wait) */
+		SYS_PLIST,									/* Prints process list info. */
 
-		SYS_NUMBER_OF_CALLS					/* Counts number of sys calls, no system call. */
+		SYS_NUMBER_OF_CALLS
   };
 
 #endif /* lib/syscall-nr.h */
