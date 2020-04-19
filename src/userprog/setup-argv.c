@@ -59,11 +59,11 @@ void* setup_main_stack(const char* command_line, void* stack_top)
 
   /* round up to make it even divisible by 4 */
 	if(line_size % 4 != 0)
-		line_size += 4 - line_size % 4;
+		line_size += 4 - (line_size % 4);
   //STACK_DEBUG("# line_size (aligned) = %d\n", line_size);
 
   /* calculate how many words the command_line contain */
-  argc = count_args(command_line, " "); // Space is delimiter, think "./a.out this is args" <- has 3(4) arguments.
+  argc = count_args(command_line, " "); // Space is delimiter
   //STACK_DEBUG("# argc = %d\n", argc);
 
   /*
@@ -86,13 +86,13 @@ void* setup_main_stack(const char* command_line, void* stack_top)
 	cmd_line_on_stack = (char*)((int*)stack_top - line_size); // Cast to char* as it's what type cmd_line_on_stack is.
 
 	/* copy the command_line to where it should be in the stack */
-	strlcpy(cmd_line_on_stack, command_line, line_size);
+	strlcpy(cmd_line_on_stack, command_line, line_size + 1); // + 1?
 
 	/* build argv array and insert null-characters after each word */
 	/* See string.c for more information. */
 	for (char *token = strtok_r(cmd_line_on_stack, " ", &ptr_save); token != NULL; token = strtok_r(NULL, " ", &ptr_save))
 	{
-		//debug ("arg(%d) = \"%s\"\n", i, token);
+		//printf ("arg(%d) = \"%s\"\n", i, token);
 		esp->argv[i++] = token;
 	}
 

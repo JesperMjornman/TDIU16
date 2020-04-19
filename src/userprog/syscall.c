@@ -24,7 +24,7 @@ static void sys_halt (void);
 static void sys_plist(void);
 
 static int sys_read (int fd, char *buf, int len);
-static int sys_write(int fd, char *buf, int len);
+static int sys_write(int fd, const char *buf, int len);
 static int sys_open  (const char *fname);
 static int sys_create(const char *fname, unsigned init_size);
 static int sys_remove(const char *fname);
@@ -32,6 +32,7 @@ static int sys_filesize(int fd);
 
 static unsigned sys_tell(int fd);
 
+static bool valid_ptr(void *ptr);
 void
 syscall_init (void)
 {
@@ -92,7 +93,7 @@ syscall_handler (struct intr_frame *f)
 			f->eax = sys_read((int)esp[1], (char*)esp[2], (int)esp[3]);
 			break;
 		case SYS_WRITE:
-			f->eax = sys_write((int)esp[1], (char*)esp[2], (int)esp[3]);
+			f->eax = sys_write((int)esp[1], (const char*)esp[2], (int)esp[3]);
 			break;
 		case SYS_SEEK:
 			sys_seek((int)esp[1], (unsigned)esp[2]);
@@ -176,7 +177,7 @@ static int sys_read(int fd, char *buf, int len)
 		return -1;
 }
 
-static int sys_write(int fd, char *buf, int len)
+static int sys_write(int fd, const char *buf, int len)
 {
 	if(fd == STDOUT_FILENO)
 	{
@@ -201,6 +202,8 @@ static int sys_write(int fd, char *buf, int len)
 
 static int sys_open(const char *fname)
 {
+	if(!valid_ptr((void*)fname))
+		return -1;
 	struct file *fp = filesys_open(fname);
 	if(fp == NULL)
 		return -1;
@@ -214,6 +217,8 @@ static int sys_open(const char *fname)
 
 static int sys_create(const char *fname, unsigned init_size)
 {
+	if(!valid_ptr((void*)fname))
+		return -1;
 	return filesys_create(fname, init_size);
 }
 
@@ -229,6 +234,8 @@ static void sys_close(int fd)
 
 static int sys_remove(const char *fname)
 {
+	if(!valid_ptr((void*)fname))
+		return -1;
 	return filesys_remove(fname);
 }
 
@@ -281,4 +288,9 @@ static void sys_exit(int status)
 static void sys_plist(void)
 {
 	plist_print(&process_list);
+}
+
+static bool valid_ptr(void *ptr)
+{
+	return(ptr != NULL && ptr < PHYS_BASE);
 }

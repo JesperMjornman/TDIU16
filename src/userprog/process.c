@@ -224,14 +224,11 @@ process_wait (int child_id)
         cur->name, cur->tid, child_id);
 
 	struct processInfo *p = map_find(&process_list, child_id);
-	if(p != NULL && cur->tid == p->parent_pid && p->alive) // Fel här?
+	if(p != NULL && cur->tid == p->parent_pid && p->alive)
 	{
 		sema_down(&p->sema);
-		//debug("# \nProcess: %d, exit status %d \n", p->pid, p->exit_status);
 		status = p->exit_status;
-		//p->alive = false;
 	}
-
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);
 
@@ -271,7 +268,6 @@ process_cleanup (void)
 	 struct processInfo *p = map_find(&process_list, cur->tid);
 	 if(p != NULL)
 		 status = p->exit_status;
-
   printf("%s: exit(%d)\n", thread_name(), status);
 
 	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
@@ -283,7 +279,6 @@ process_cleanup (void)
 		plist_remove(&process_list, cur->tid);													/* Remove process if parent from active list (if parent is dead), fix new search problem. */
 		sema_up(&p->sema);																							/* Release sema of process. If wait(p) we sema down for waiting and sema up in cleanup */
 	}
-	//plist_print(&process_list);																			/* Debug */
 
 	/* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

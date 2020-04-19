@@ -50,7 +50,7 @@ value_t map_find(struct map* m, key_t k)
 value_t map_remove(struct map* m, key_t k)
 {
 	struct association *e = map_find_associative(m, k);
-	if(e == NULL)
+	if(e == NULL || k < 0)
 		return NULL;
 
 	value_t tmp = e->value;
