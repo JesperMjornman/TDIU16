@@ -203,7 +203,8 @@ static int sys_write(int fd, const char *buf, int len)
 static int sys_open(const char *fname)
 {
 	if(!valid_ptr((void*)fname))
-		return -1;
+		sys_exit(-1);
+
 	struct file *fp = filesys_open(fname);
 	if(fp == NULL)
 		return -1;
@@ -218,7 +219,7 @@ static int sys_open(const char *fname)
 static int sys_create(const char *fname, unsigned init_size)
 {
 	if(!valid_ptr((void*)fname))
-		return -1;
+		sys_exit(-1);
 	return filesys_create(fname, init_size);
 }
 
@@ -235,7 +236,7 @@ static void sys_close(int fd)
 static int sys_remove(const char *fname)
 {
 	if(!valid_ptr((void*)fname))
-		return -1;
+		return false;
 	return filesys_remove(fname);
 }
 
@@ -292,5 +293,5 @@ static void sys_plist(void)
 
 static bool valid_ptr(void *ptr)
 {
-	return(ptr != NULL && ptr < PHYS_BASE);
+	return(ptr != NULL && ptr < PHYS_BASE); /* Temporär, fungerar inte för address intervall som är olagliga ännu */
 }

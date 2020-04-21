@@ -13,11 +13,10 @@
 struct disk *filesys_disk;
 
 static void do_format (void);
-
 /* Initializes the file system module.
    If FORMAT is true, reformats the file system. */
 void
-filesys_init (bool format) 
+filesys_init (bool format)
 {
   filesys_disk = disk_get (0, 1);
   if (filesys_disk == NULL)
@@ -26,16 +25,15 @@ filesys_init (bool format)
   inode_init ();
   free_map_init ();
 
-  if (format) 
+  if (format)
     do_format ();
-
   free_map_open ();
 }
 
 /* Shuts down the file system module, writing any unwritten data
    to disk. */
 void
-filesys_done (void) 
+filesys_done (void)
 {
   free_map_close ();
 }
@@ -45,7 +43,7 @@ filesys_done (void)
    Fails if a file named NAME already exists,
    or if internal memory allocation fails. */
 bool
-filesys_create (const char *name, off_t initial_size) 
+filesys_create (const char *name, off_t initial_size)
 {
   disk_sector_t inode_sector = 0;
   struct dir *dir = dir_open_root ();
@@ -53,10 +51,10 @@ filesys_create (const char *name, off_t initial_size)
                   && free_map_allocate (1, &inode_sector)
                   && inode_create (inode_sector, initial_size)
                   && dir_add (dir, name, inode_sector));
-  if (!success && inode_sector != 0) 
+  if (!success && inode_sector != 0)
     free_map_release (inode_sector, 1);
   dir_close (dir);
-  
+
   return success;
 }
 
@@ -77,14 +75,13 @@ filesys_open (const char *name)
   dir_close (dir);
 
   file = file_open (inode);
-  
   return file;
 }
 
 void
 filesys_close (struct file *file)
 {
-  file_close(file);
+	file_close(file);
 }
 
 /* Deletes the file named NAME.
@@ -92,12 +89,12 @@ filesys_close (struct file *file)
    Fails if no file named NAME exists,
    or if an internal memory allocation fails. */
 bool
-filesys_remove (const char *name) 
+filesys_remove (const char *name)
 {
-  struct dir *dir = dir_open_root ();
+	struct dir *dir = dir_open_root ();
   bool success = dir != NULL && dir_remove (dir, name);
-  dir_close (dir); 
-  
+  dir_close (dir);
+
   return success;
 }
 

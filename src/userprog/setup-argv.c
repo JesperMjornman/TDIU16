@@ -58,8 +58,7 @@ void* setup_main_stack(const char* command_line, void* stack_top)
   //STACK_DEBUG("# line_size = %d\n", line_size);
 
   /* round up to make it even divisible by 4 */
-	if(line_size % 4 != 0)
-		line_size += 4 - (line_size % 4);
+	line_size += 4 - (line_size % 4);
   //STACK_DEBUG("# line_size (aligned) = %d\n", line_size);
 
   /* calculate how many words the command_line contain */
@@ -74,16 +73,16 @@ void* setup_main_stack(const char* command_line, void* stack_top)
 
 
   /* calculate where the final stack top will be located */
-  esp = (struct main_args*)((int*)stack_top - total_size);
+  esp = (struct main_args*)((int)stack_top - total_size);
 
   /* setup return address and argument count */
   esp->ret = NULL;  // Should be NULL according to pintos wiki.
   esp->argc = argc; // Already calculated, argc no pointer so just assign value.
   /* calculate where in the memory the argv array starts */
-  esp->argv = (char**)(esp + 2); // Cast address to correct type, char**
+  esp->argv = (char**)(esp + 1); // Cast address to correct type, char**
 
 	/* calculate where in the memory the words is stored */
-	cmd_line_on_stack = (char*)((int*)stack_top - line_size); // Cast to char* as it's what type cmd_line_on_stack is.
+	cmd_line_on_stack = (char*)(esp->argv + esp->argc + 1); // Cast to char* as it's what type cmd_line_on_stack is.
 
 	/* copy the command_line to where it should be in the stack */
 	strlcpy(cmd_line_on_stack, command_line, line_size + 1); // + 1?

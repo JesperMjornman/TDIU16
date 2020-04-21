@@ -108,7 +108,7 @@ process_execute (const char *command_line)
   if(process_id != -1)
 	{
 		sema_down(&arguments.sema);
-		process_id = arguments.ret_id;
+		process_id = arguments.ret_id; /* since we may create thread but fail to start process. */
 	}
 
   /* WHICH thread may still be using this right now? */
@@ -165,7 +165,7 @@ start_process (struct parameters_to_start_process* parameters)
        C-function expects the stack to contain, in order, the return
        address, the first argument, the second argument etc. */
 
-    //HACK if_.esp -= 12; /* Unacceptable solution. FIXED? Works with sumargv and sys_call tests. */
+    //HACK if_.esp -= 12; /* Unacceptable solution. */
 		if_.esp = setup_main_stack(parameters->command_line, if_.esp);
 		plist_insert(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
 		//debug("Added process: %d, Child to: %d\n", thread_current()->tid, parameters->parent_pid);
@@ -175,8 +175,7 @@ start_process (struct parameters_to_start_process* parameters)
        the process start, so this is the place to dump stack content
        for debug purposes. Disable the dump when it works. */
 
-//    dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
-
+  //  dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
   }
 
   debug("%s#%d: start_process(\"%s\") DONE\n",

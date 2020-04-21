@@ -174,6 +174,7 @@ int count_args(const char* buf, const char* delimeters)
  * easily removed later by replacing with nothing. */
 #define STACK_DEBUG(...) printf(__VA_ARGS__)
 
+
 void* setup_main_stack(const char* command_line, void* stack_top)
 {
   /* Variable "esp" stores an address, and at the memory loaction
@@ -195,45 +196,50 @@ void* setup_main_stack(const char* command_line, void* stack_top)
 
   /* calculate the bytes needed to store the command_line */
   line_size = strlen(command_line);
-  STACK_DEBUG("# line_size = %d\n", line_size);
+  //STACK_DEBUG("# line_size = %d\n", line_size);
 
   /* round up to make it even divisible by 4 */
 	if(line_size % 4 != 0)
-		line_size += 4 - line_size % 4;
-//  line_size = YOUR_CODE;
+		line_size += 4 - (line_size % 4);
   STACK_DEBUG("# line_size (aligned) = %d\n", line_size);
 
   /* calculate how many words the command_line contain */
-  argc = count_args(command_line, " ");
+  argc = count_args(command_line, " "); // Space is delimiter
   STACK_DEBUG("# argc = %d\n", argc);
-	//./a.out ett två
-  total_size = line_size + argc * 4 + 16;
+
+  /*
+	   calculate the size needed on our simulated stack
+	*/
+  total_size = line_size + (argc * 4) + 16;
   STACK_DEBUG("# total_size = %d\n", total_size);
 
 
   /* calculate where the final stack top will be located */
-  esp = (struct main_args*)((int*)stack_top - total_size);
+  esp = (struct main_args*)((int)stack_top - total_size);
 
   /* setup return address and argument count */
-  esp->ret = NULL;
-  esp->argc = argc;
+  esp->ret = NULL;  // Should be NULL according to pintos wiki.
+  esp->argc = argc; // Already calculated, argc no pointer so just assign value.
   /* calculate where in the memory the argv array starts */
-  esp->argv = (char**)(esp + 2);
-  /* calculate where in the memory the words is stored */
-  cmd_line_on_stack = (char*)((int*)stack_top - line_size);
+  esp->argv = (char**)(esp + 1); // Cast address to correct type, char**
 
-  /* copy the command_line to where it should be in the stack */
-	strncpy(cmd_line_on_stack, command_line, line_size);
-  /* build argv array and insert null-characters after each word */
+	/* calculate where in the memory the words is stored */
+	cmd_line_on_stack = (char*)((int)stack_top - line_size); 	// Cast to char* as it's what type cmd_line_on_stack is.
+
+	/* copy the command_line to where it should be in the stack */
+	strncpy(cmd_line_on_stack, command_line, line_size + 1); // + 1?
+
+	/* build argv array and insert null-characters after each word */
 	/* See string.c for more information. */
-	for (char *token = strtok_r (cmd_line_on_stack, " ", &ptr_save); token != NULL; token = strtok_r (NULL, " ", &ptr_save))
+	for (char *token = strtok_r(cmd_line_on_stack, " ", &ptr_save); token != NULL; token = strtok_r(NULL, " ", &ptr_save))
 	{
-		printf("%s\n", token);
+		//printf ("arg(%d) = \"%s\"\n", i, token);
 		esp->argv[i++] = token;
 	}
 
 	return esp; /* the new stack top */
 }
+
 
 /* The C way to do constants ... */
 #define LINE_SIZE 1024
