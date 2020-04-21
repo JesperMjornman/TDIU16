@@ -1,11 +1,14 @@
 #include <stddef.h>
 #include "userprog/plist.h"
 #include "threads/malloc.h"
+#include "threads/synch.h"
 
+//static struct lock plock;
 
 void plist_init(struct map *pl)
 {
 	map_init(pl);
+	//lock_init(&plock);
 }
 
 void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED)
@@ -28,8 +31,6 @@ void plist_print(struct map *pl)
 
 int plist_insert(struct map *pl, value_t v, key_t k)
 {
-	//struct processInfo *p = (struct processInfo*)v;
-	//sema_init(&p->sema, 0);
 	return map_insert_from_key(pl, v, k);
 }
 
@@ -76,7 +77,7 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 	{
 		p->pid = pid;
 		p->parent_pid = parent_pid;
-		p->exit_status = 0; 				
+		p->exit_status = 0;
 		p->alive = 1;
 		p->parent_alive = 1;
 		sema_init(&p->sema, 0); 		// Move to actual insertion as it can fault there too?
@@ -93,6 +94,7 @@ void plist_remove_if(struct map* m,
 		struct association *e = list_entry(it, struct association, elem);
 		if (cond(e->key, e->value, aux))
 		{
+			//Lock this?
 			it = list_remove(&e->elem);
 			free(e->value);
 			free(e);

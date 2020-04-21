@@ -2,42 +2,65 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "threads/malloc.h"
+#include "threads/synch.h"
+
+static struct lock mlock;
 
 void map_init(struct map* m)
 {
 	list_init(&m->content);
+	lock_init(&mlock);
 	m->next_key = 2;
 }
 
 key_t map_insert(struct map* m, value_t v)
 {
-	if(map_find(m, m->next_key))
+	lock_acquire(&mlock);
+
+	if(map_find(m, m->next_key) != NULL)
+	{
+		lock_release(&mlock);
 		return -1; // Error in insertion.
+	}
 
 	struct association *new_elem = (struct association*)malloc(sizeof(struct association));
 	if(new_elem == NULL)
+	{
+		lock_release(&mlock);
 		return -1;
+	}
 
 	new_elem->key = m->next_key++;
 	new_elem->value = v;
 
 	list_push_back(&m->content, &new_elem->elem);
+
+	lock_release(&mlock);
 	return new_elem->key;
 }
 
 int map_insert_from_key(struct map *m, value_t v, key_t k)
 {
+	lock_acquire(&mlock);
+
 	if (map_find(m, k) != NULL)
+	{
+		lock_release(&mlock);
 		return -1;
+	}
 
 	struct association *new_elem = malloc(sizeof(struct association));
 	if(new_elem == NULL)
+	{
+		lock_release(&mlock);
 		return -1;
+	}
 
 	new_elem->key = k;
 	new_elem->value = v;
 
 	list_push_back(&m->content, &new_elem->elem);
+	lock_release(&mlock);
 	return k;
 }
 
@@ -49,13 +72,17 @@ value_t map_find(struct map* m, key_t k)
 
 value_t map_remove(struct map* m, key_t k)
 {
+	lock_acquire(&mlock);
 	struct association *e = map_find_associative(m, k);
 	if(e == NULL || k < 0)
+	{
+		lock_release(&mlock);
 		return NULL;
-
+	}
 	value_t tmp = e->value;
 	list_remove(&e->elem);
 	free(e);
+	lock_release(&mlock);
 	return tmp;
 }
 
@@ -98,11 +125,15 @@ struct association *map_find_associative(struct map *m, key_t k)
 
 value_t map_get_from_pointer(struct list_elem *it)
 {
+	lock_acquire(&mlock);
 	if(it != NULL)
 	{
 		struct association *e = list_entry(it, struct association, elem);
+		lock_release(&mlock);
 		return(e->value);
 	}
+	lock_release(&mlock);
+	return NULL;
 }
 
 struct list_elem *map_remove_from_pointer(struct association *it)
