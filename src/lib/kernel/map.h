@@ -2,7 +2,7 @@
 #define DICTIONARY_H
 #include <stdbool.h>
 #include "lib/kernel/list.h"
-
+#include "threads/synch.h"
 /*
  * Remember to type cast to correct value in case of printing.
  */
@@ -19,6 +19,7 @@ struct association
 struct map
 {
 	struct list content;
+	struct lock mlock;
 	int next_key; // Konstig?
 };
 

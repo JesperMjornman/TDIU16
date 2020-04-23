@@ -3,12 +3,9 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
-//static struct lock plock;
-
 void plist_init(struct map *pl)
 {
 	map_init(pl);
-	//lock_init(&plock);
 }
 
 void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED)

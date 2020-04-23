@@ -126,12 +126,13 @@ syscall_handler (struct intr_frame *f)
 			break;
     default:
     {
-      printf ("Executed an unknown system call!\n");
+			sys_exit(-1);
+      /*printf ("Executed an unknown system call!\n");
 
       printf ("Stack top + 0: %d\n", esp[0]);
       printf ("Stack top + 1: %d\n", esp[1]);
 
-      thread_exit ();
+      thread_exit ();*/
     }
   }
 }
