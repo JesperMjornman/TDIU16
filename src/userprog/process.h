@@ -2,6 +2,7 @@
 #define USERPROG_PROCESS_H
 
 #include "threads/thread.h"
+extern struct map process_list;
 
 void process_init (void);
 void process_print_list (void);

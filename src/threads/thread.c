@@ -113,9 +113,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
-
-  /* YES! You may want add stuff here. */
+#ifdef USERPROG
 	map_init(&t->f_map);
+#endif
 }
 
 /* Starts preemptive thread scheduling by enabling interrupts.

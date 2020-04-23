@@ -97,19 +97,22 @@ struct thread
     /*
 			File map for individual thread.
 			Remember potential typecasting as the map
-			ueses value_t defined as void*
+			uses value_t defined as void*
 
-			Should contain all relevant functionality for usage in thread,
-			except for size handling. Should possibly move to specific
-			flist.c implementation, mainly for insertion of new "files".
-			(Or handle in sys-call, defining a macro for MAX_FMAP_SIZE)
+			Should contain all relevant
+			functionality for usage in thread(file "table"),
+			except for size of list handling.
+		  Should handle map size in sys-call,
+			defining a macro for MAX_FMAP_SIZE)
 
-			Freeing memory of f_map should be done with caution;
-			not freeing elements value unless needed
+			Freeing memory of f_map should be done with caution,
+			preferably avoid allocating memory specific to the map.
+
+
 		 */
-		struct map f_map; 									/* File list */
 
 #ifdef USERPROG
+		struct map f_map; 									/* File list */
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
 #endif

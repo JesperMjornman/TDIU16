@@ -12,21 +12,27 @@
 #include "threads/init.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
+#include "userprog/plist.h"
 #include "devices/input.h"
+#include "devices/timer.h"
 
 static void syscall_handler (struct intr_frame *);
-static void sys_seek(int fd, unsigned position);
+static void sys_seek (int fd, unsigned position);
 static void sys_close(int fd);
+static void sys_exit (int status);
+static void sys_halt (void);
+static void sys_plist(void);
 
-static int sys_read(int fd, char *buf, int len);
-static int sys_write(int fd, char *buf, int len);
-static int sys_open(const char *fname);
+static int sys_read (int fd, char *buf, int len);
+static int sys_write(int fd, const char *buf, int len);
+static int sys_open  (const char *fname);
 static int sys_create(const char *fname, unsigned init_size);
 static int sys_remove(const char *fname);
 static int sys_filesize(int fd);
 
 static unsigned sys_tell(int fd);
 
+static bool valid_ptr(void *ptr);
 void
 syscall_init (void)
 {
@@ -49,7 +55,7 @@ const int argc[] = {
   /* not implemented */
   2, 1,    1, 1, 2, 1, 1,
   /* extended */
-  0
+  1, 0
 };
 
 static void
@@ -57,28 +63,22 @@ syscall_handler (struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
 	//int sys_read_arg_count = argc[ esp[0] ];
-
-  switch ( esp[0] /* retrive syscall number */ ) // syscall number top of stack
+  switch ( esp[0] /* retrive syscall number */ )
   {
 		case SYS_HALT:
-		{
-			debug("CALLED: SYS_HALT\n");
-			power_off();
+			sys_halt();
 			break;
-		}
 		case SYS_EXIT:
-		{
-			debug("CALLED: SYS_EXIT, CODE (%d)\n", (int)esp[1]);
-			process_exit((int)esp[1]);  // Set exit code for process.
-			thread_exit(); 							// Close current thread.
+			sys_exit((int)esp[1]);
 			break;
-		}
 		case SYS_EXEC:
+			f->eax = process_execute((const char*)esp[1]);
 			break;
 		case SYS_WAIT:
+			f->eax = process_wait((int)esp[1]);
 			break;
 		case SYS_CREATE:
-			f->eax = sys_create((const char*)esp[1], esp[2]);
+			f->eax = sys_create((const char*)esp[1], (unsigned)esp[2]);
 			break;
 		case SYS_REMOVE:
 			f->eax = sys_remove((const char*)esp[1]);
@@ -90,13 +90,13 @@ syscall_handler (struct intr_frame *f)
 			f->eax = sys_filesize((int)esp[1]);
 			break;
 		case SYS_READ:
-			f->eax = sys_read(esp[1], (char*)esp[2], esp[3]);
+			f->eax = sys_read((int)esp[1], (char*)esp[2], (int)esp[3]);
 			break;
 		case SYS_WRITE:
-			f->eax = sys_write(esp[1], (char*)esp[2], esp[3]);
+			f->eax = sys_write((int)esp[1], (const char*)esp[2], (int)esp[3]);
 			break;
 		case SYS_SEEK:
-			sys_seek((int)esp[1], esp[2]);
+			sys_seek((int)esp[1], (unsigned)esp[2]);
 			break;
 		case SYS_TELL:
 			f->eax = sys_tell((int)esp[1]);
@@ -118,14 +118,21 @@ syscall_handler (struct intr_frame *f)
 			break;
 		case SYS_INUMBER:
 			break;
+		case SYS_SLEEP:
+			timer_msleep((int)esp[1]);
+			break;
+		case SYS_PLIST:
+			sys_plist();
+			break;
     default:
     {
-      printf ("Executed an unknown system call!\n");
+			sys_exit(-1);
+      /*printf ("Executed an unknown system call!\n");
 
       printf ("Stack top + 0: %d\n", esp[0]);
       printf ("Stack top + 1: %d\n", esp[1]);
 
-      thread_exit ();
+      thread_exit ();*/
     }
   }
 }
@@ -142,27 +149,27 @@ static int sys_read(int fd, char *buf, int len)
 
 			if(tmp == '\r')
 				tmp = '\n';
+			else if(tmp < 32) 	/* To handle special buttons when asking for input. */
+				continue;
 			else if(tmp == 127) /* Handle backspace for deletion of characters in buffer (Note: only in terminal!) */
 			{
 				if(n_char == 0)
-				{
 					continue;
-				}
 
 				buf[--n_char] = 0;
 				putbuf("\b \b", 3);
 				continue;
 			}
+
 			buf[n_char] = tmp;
-			putbuf(&buf[n_char], 1);
-			++n_char;
+			putbuf(&buf[n_char++], 1);
 		}
 		return len;
 	}
 	else if(fd > 1)
 	{
 		struct file *fp = map_find(&thread_current()->f_map, fd);
-		if(fp == NULL)
+		if(fp == NULL) /* Is the file open? */
 			return -1;
 
 		return file_read(fp, buf, len);
@@ -171,7 +178,7 @@ static int sys_read(int fd, char *buf, int len)
 		return -1;
 }
 
-static int sys_write(int fd, char *buf, int len)
+static int sys_write(int fd, const char *buf, int len)
 {
 	if(fd == STDOUT_FILENO)
 	{
@@ -196,10 +203,13 @@ static int sys_write(int fd, char *buf, int len)
 
 static int sys_open(const char *fname)
 {
+	if(!valid_ptr((void*)fname))
+		sys_exit(-1);
+
 	struct file *fp = filesys_open(fname);
 	if(fp == NULL)
 		return -1;
-	/* Save fd to current threads open file-map */
+	/* Save fp to current thread's open file map */
 	int fd = map_insert(&thread_current()->f_map, fp);
 	if(fd == -1) /* On failure of insertion */
 		filesys_close(fp);
@@ -209,12 +219,14 @@ static int sys_open(const char *fname)
 
 static int sys_create(const char *fname, unsigned init_size)
 {
+	if(!valid_ptr((void*)fname))
+		sys_exit(-1);
 	return filesys_create(fname, init_size);
 }
 
 static void sys_close(int fd)
 {
-	if(fd > 1) /* Malicious user defense */
+	if(fd > 1) /* fd < 2 is STDIN/STDOUT, use to avoid errors. */
 	{
 		filesys_close(map_find(&thread_current()->f_map, fd));
 		/* Remove from f_map as file is closed */
@@ -224,11 +236,16 @@ static void sys_close(int fd)
 
 static int sys_remove(const char *fname)
 {
+	if(!valid_ptr((void*)fname))
+		return false;
 	return filesys_remove(fname);
 }
 
 static int sys_filesize(int fd)
 {
+	if(fd < 2)
+		return -1;
+
 	struct file *fp = map_find(&thread_current()->f_map, fd);
 	if(fp == NULL)
 		return -1;
@@ -256,4 +273,26 @@ static void sys_seek(int fd, unsigned position)
 		if(fp != NULL)
 			file_seek(fp, position);
 	}
+}
+
+static void sys_halt(void)
+{
+	free_all_mem(&process_list);
+	power_off();
+}
+
+static void sys_exit(int status)
+{
+	process_exit(status);  				// Set exit code for process.
+	thread_exit(); 							// Close current thread.
+}
+
+static void sys_plist(void)
+{
+	plist_print(&process_list);
+}
+
+static bool valid_ptr(void *ptr)
+{
+	return(ptr != NULL && ptr < PHYS_BASE); /* Temporär, fungerar inte för address intervall som är olagliga ännu */
 }

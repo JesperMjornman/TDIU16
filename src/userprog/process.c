@@ -22,7 +22,7 @@
 
 #include "userprog/flist.h"
 #include "userprog/plist.h"
-
+#include "userprog/setup-argv.h"
 /* HACK defines code you must remove and implement in a proper way */
 #define HACK
 
@@ -44,7 +44,7 @@ void process_exit(int status)
 {
 	struct processInfo *p = map_find_associative(&process_list, thread_current()->tid)->value;
 	p->exit_status = status;
-	debug("Exiting process: %d, status %d\n", p->pid, p->exit_status);
+	//debug("Exiting process: %d, status %d\n", p->pid, p->exit_status);
 }
 
 /* Print a list of all running processes. The list shall include all
@@ -58,6 +58,7 @@ struct parameters_to_start_process
 {
   char* command_line;
 	int parent_pid;
+	int ret_id;
 	struct semaphore sema;
 };
 
@@ -95,7 +96,8 @@ process_execute (const char *command_line)
 
 	// Set parent
 	arguments.parent_pid = thread_current()->tid;
-	//semaphore_init(&arugments.sema);
+	sema_init(&arguments.sema, 0);
+	arguments.ret_id = -1;
 	/* SCHEDULES function `start_process' to run (LATER) */
   thread_id = thread_create (debug_name, PRI_DEFAULT,
                              (thread_func*)start_process, &arguments);
@@ -103,8 +105,11 @@ process_execute (const char *command_line)
   process_id = thread_id;
 
   /* AVOID bad stuff by turning off. YOU will fix this! */
-  power_off();
-
+  if(process_id != -1)
+	{
+		sema_down(&arguments.sema);
+		process_id = arguments.ret_id; /* since we may create thread but fail to start process. */
+	}
 
   /* WHICH thread may still be using this right now? */
   free(arguments.command_line);
@@ -160,18 +165,17 @@ start_process (struct parameters_to_start_process* parameters)
        C-function expects the stack to contain, in order, the return
        address, the first argument, the second argument etc. */
 
-    HACK if_.esp -= 12; /* Unacceptable solution. */
-
-		map_insert_from_key(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
-		debug("Added process: %d, Child to: %d\n", thread_current()->tid, parameters->parent_pid);
-
+    //HACK if_.esp -= 12; /* Unacceptable solution. */
+		if_.esp = setup_main_stack(parameters->command_line, if_.esp);
+		plist_insert(&process_list, plist_create_process(thread_current()->tid, parameters->parent_pid), thread_current()->tid);
+		//debug("Added process: %d, Child to: %d\n", thread_current()->tid, parameters->parent_pid);
+		parameters->ret_id = thread_current()->tid;
 
 		    /* The stack and stack pointer should be setup correct just before
        the process start, so this is the place to dump stack content
        for debug purposes. Disable the dump when it works. */
 
-//    dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
-
+  //  dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
   }
 
   debug("%s#%d: start_process(\"%s\") DONE\n",
@@ -179,7 +183,7 @@ start_process (struct parameters_to_start_process* parameters)
         thread_current()->tid,
         parameters->command_line);
 
-
+	sema_up(&parameters->sema);
   /* If load fail, quit. Load may fail for several reasons.
      Some simple examples:
      - File doeas not exist
@@ -217,7 +221,13 @@ process_wait (int child_id)
 
   debug("%s#%d: process_wait(%d) ENTERED\n",
         cur->name, cur->tid, child_id);
-  /* Yes! You need to do something good here ! */
+
+	struct processInfo *p = map_find(&process_list, child_id);
+	if(p != NULL && cur->tid == p->parent_pid && p->alive)
+	{
+		sema_down(&p->sema);
+		status = p->exit_status;
+	}
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
         cur->name, cur->tid, child_id, status);
 
@@ -243,12 +253,7 @@ process_cleanup (void)
   uint32_t       *pd  = cur->pagedir;
   int status = -1;
 
-	/* Set status to exit_status. */
-	struct processInfo *p = map_find(&process_list, cur->tid);
-	if(p != NULL)
-		status = p->exit_status;
-
-  debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
+	debug("%s#%d: process_cleanup() ENTERED\n", cur->name, cur->tid);
 
   /* Later tests DEPEND on this output to work correct. You will have
    * to find the actual exit status in your process list. It is
@@ -257,13 +262,24 @@ process_cleanup (void)
    * that may sometimes poweroff as soon as process_wait() returns,
    * possibly before the printf is completed.)
    */
+
+	 /* Set status to exit_status. */
+	 struct processInfo *p = map_find(&process_list, cur->tid);
+	 if(p != NULL)
+		 status = p->exit_status;
   printf("%s: exit(%d)\n", thread_name(), status);
 
 	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
 		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
 	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
 
-  /* Destroy the current process's page directory and switch back
+	if(p != NULL)
+	{
+		plist_remove(&process_list, cur->tid);													/* Remove process if parent from active list (if parent is dead), fix new search problem. */
+		sema_up(&p->sema);																							/* Release sema of process. If wait(p) we sema down for waiting and sema up in cleanup */
+	}
+
+	/* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   if (pd != NULL)
   {
