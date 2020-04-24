@@ -8,6 +8,7 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
+#include <stdio.h>
 
 /* Identifies an inode. */
 #define INODE_MAGIC 0x494e4f44
@@ -38,9 +39,23 @@ struct inode
     int open_cnt;                       /* Number of openers. */
     bool removed;                       /* True if deleted, false otherwise. */
     struct inode_disk data;             /* Inode content. */
-		struct lock inode_rw_lock;					/* Read/Write lock. (Inode is the "bottom layer" of write/read) */
-  };
+		/*
+			As all file-handling is done via inodes we handle
+			read and write locks as an "object" lock, i.e.
+			the file's read/write lock.
 
+			read_cnt keeps track of number of "readers", must be 0 for
+			writin to be acceptable.
+
+			writing boolean defines if any thread is currently writing
+			to this inode. If true, locks out all other threads from
+			reading or writing.
+		 */
+		struct lock rw_lock;								/* Read/Write lock. */
+		struct condition rw_cond;						/* Lock condition for rw_lock. */
+		int read_cnt;												/* Count of threads currently reading. */
+		bool writing;												/* Is inode being written to? */
+  };
 
 /* Returns the disk sector that contains byte offset POS within
    INODE.
@@ -147,8 +162,12 @@ inode_open (disk_sector_t sector)
   inode->sector = sector;
   inode->open_cnt = 1;
   inode->removed = false;
+	inode->writing = false; 			/* Not writing if opened yet */
+	inode->read_cnt = 0;					/* Initialize 0 */
 
   disk_read (filesys_disk, inode->sector, &inode->data);
+	lock_init(&inode->rw_lock);  	/* Init read/write lock */
+	cond_init(&inode->rw_cond);		/* Init condition for read/write lock */
 	lock_release(&ilock);
   return inode;
 }
@@ -223,7 +242,17 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
   uint8_t *buffer = buffer_;
   off_t bytes_read = 0;
   uint8_t *bounce = NULL;
-	//cond_wait. Lås för wait här så trådar väntar på att första är klar och sedan fortsätter.
+
+	/* Condition wait here. Wait for inode to stop writing.
+		 If writing is active, we won't allow reading.
+		 If reading allow "new" thread to read. */
+	lock_acquire(&inode->rw_lock);
+	while(inode->writing)														/* Wait until inode is readable (i.e. not currently being written to). */
+		cond_wait(&inode->rw_cond, &inode->rw_lock);
+
+	++inode->read_cnt;
+	//cond_signal(&inode->rw_cond, &inode->rw_lock); 	/* Send signal to wake next thread, hopefully reads */
+	lock_release(&inode->rw_lock);									/* Allow other read requests to go through (not hogging the lock). */
   while (size > 0)
     {
       /* Disk sector to read, starting byte offset within sector. */
@@ -265,7 +294,10 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
       bytes_read += chunk_size;
     }
   free (bounce);
-	//lock_release(&ilock);
+	lock_acquire(&inode->rw_lock);											/* Must own lock when brodcasting or signaling */
+	cond_broadcast(&inode->rw_cond, &inode->rw_lock);		/* Brodcast condition to wake up threads */
+	inode->read_cnt--; 																	/* Read finished for this thread, decrement amound of "readers" */
+	lock_release(&inode->rw_lock);											/* Done with lock */
   return bytes_read;
 }
 
@@ -282,7 +314,15 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
-	//lock_acquire(&ilock);
+	/* Condition wait here. Wait for either read to be finished or for this thread's turn in queue.
+		 Set boolean writing to true, thereby avoiding reads to be allowed at this time.
+		 Maybe set a boolean reading too? Several reads may occur at once, maybe just lock for writing? */
+	lock_acquire(&inode->rw_lock);
+	while(inode->read_cnt || inode->writing)
+		cond_wait(&inode->rw_cond, &inode->rw_lock);
+
+	inode->writing = true;
+	lock_release(&inode->rw_lock);
   while (size > 0)
     {
       /* Sector to write, starting byte offset within sector. */
@@ -331,7 +371,10 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
       bytes_written += chunk_size;
     }
   free (bounce);
-	//lock_release(&ilock);
+	lock_acquire(&inode->rw_lock);
+	cond_broadcast(&inode->rw_cond, &inode->rw_lock);
+	inode->writing = false;
+	lock_release(&inode->rw_lock);
   return bytes_written;
 }
 

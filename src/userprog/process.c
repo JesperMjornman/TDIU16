@@ -175,7 +175,7 @@ start_process (struct parameters_to_start_process* parameters)
        the process start, so this is the place to dump stack content
        for debug purposes. Disable the dump when it works. */
 
-  //  dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
+    //dump_stack ( PHYS_BASE + 15, PHYS_BASE - if_.esp + 16 );
   }
 
   debug("%s#%d: start_process(\"%s\") DONE\n",
@@ -223,9 +223,14 @@ process_wait (int child_id)
         cur->name, cur->tid, child_id);
 
 	struct processInfo *p = map_find(&process_list, child_id);
-	if(p != NULL && cur->tid == p->parent_pid && p->alive)
+
+	if(p != NULL && cur->tid == p->parent_pid && !p->waiting)
 	{
-		sema_down(&p->sema);
+		if(p->alive)
+		{
+			p->waiting = true;
+			sema_down(&p->sema);
+		}
 		status = p->exit_status;
 	}
   debug("%s#%d: process_wait(%d) RETURNS %d\n",

@@ -76,7 +76,8 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 		p->parent_pid = parent_pid;
 		p->exit_status = 0;
 		p->alive = 1;
-		p->parent_alive = 1;
+		p->parent_alive = (p->parent_pid == 1 ? 0 : 1);
+		p->waiting = false;
 		sema_init(&p->sema, 0); 		// Move to actual insertion as it can fault there too?
   }
 	return p;
@@ -91,9 +92,10 @@ void plist_remove_if(struct map* m,
 		struct association *e = list_entry(it, struct association, elem);
 		if (cond(e->key, e->value, aux))
 		{
-			//Lock this?
+			struct processInfo *pi = e->value;
 			it = list_remove(&e->elem);
-			free(e->value);
+			if(pi->parent_pid != 1)
+				free(e->value);
 			free(e);
 			it = list_prev(it);
 		}
