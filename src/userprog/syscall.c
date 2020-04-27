@@ -9,7 +9,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
-#include "threads/init.h"
+#include "threads/init.h" // Ta bort
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "userprog/plist.h"
@@ -28,11 +28,16 @@ static int sys_write(int fd, const char *buf, int len);
 static int sys_open  (const char *fname);
 static int sys_create(const char *fname, unsigned init_size);
 static int sys_remove(const char *fname);
+static int sys_exec	 (const char *fname);
 static int sys_filesize(int fd);
 
 static unsigned sys_tell(int fd);
 
+/* Security */
 static bool valid_ptr(void *ptr);
+static bool sys_verify_variable_length(char* start);
+static bool sys_verify_fix_length			(void* start, int length);
+
 void
 syscall_init (void)
 {
@@ -72,7 +77,8 @@ syscall_handler (struct intr_frame *f)
 			sys_exit((int)esp[1]);
 			break;
 		case SYS_EXEC:
-			f->eax = process_execute((const char*)esp[1]);
+			//f->eax = process_execute((const char*)esp[1]);
+			f->eax = sys_exec((const char*)esp[1]);
 			break;
 		case SYS_WAIT:
 			f->eax = process_wait((int)esp[1]);
@@ -172,6 +178,7 @@ static int sys_read(int fd, char *buf, int len)
 		if(fp == NULL) /* Is the file open? */
 			return -1;
 
+		//Check read len
 		return file_read(fp, buf, len);
 	}
 	else
@@ -195,6 +202,7 @@ static int sys_write(int fd, const char *buf, int len)
 		if(fp == NULL)
 			return -1;
 
+		// Check write len.
 		return file_write(fp, buf, len);
 	}
 	else
@@ -203,7 +211,7 @@ static int sys_write(int fd, const char *buf, int len)
 
 static int sys_open(const char *fname)
 {
-	if(!valid_ptr((void*)fname))
+	if(!sys_verify_variable_length((char*)fname))
 		sys_exit(-1);
 
 	struct file *fp = filesys_open(fname);
@@ -219,7 +227,7 @@ static int sys_open(const char *fname)
 
 static int sys_create(const char *fname, unsigned init_size)
 {
-	if(!valid_ptr((void*)fname))
+	if(!sys_verify_fix_length((char*)fname, init_size))
 		sys_exit(-1);
 	return filesys_create(fname, init_size);
 }
@@ -236,8 +244,8 @@ static void sys_close(int fd)
 
 static int sys_remove(const char *fname)
 {
-	if(!valid_ptr((void*)fname))
-		return false;
+	if(!sys_verify_variable_length((char*)fname))
+		sys_exit(-1);
 	return filesys_remove(fname);
 }
 
@@ -292,7 +300,53 @@ static void sys_plist(void)
 	plist_print(&process_list);
 }
 
+static int sys_exec(const char *fname)
+{
+	if(!sys_verify_variable_length((char*)fname))
+		return -1;
+	return process_execute(fname);
+}
+
 static bool valid_ptr(void *ptr)
 {
 	return(ptr != NULL && ptr < PHYS_BASE); /* Temporär, fungerar inte för address intervall som är olagliga ännu */
+}
+
+static bool sys_verify_fix_length(void* start, int length)
+{
+	if(!valid_ptr(start))
+		sys_exit(-1);
+
+	void *cur, *end;
+	end = (void*)((unsigned)start + length);
+	cur = pg_round_down(start);
+
+	while(cur < end)
+	{
+		if(pagedir_get_page(thread_current()->pagedir, cur) == NULL)
+			return false;
+
+		cur = (void*)((unsigned)cur + PGSIZE); /* GOTO next page */
+	}
+	return true;
+}
+
+static bool sys_verify_variable_length(char* start) // Kanske måste skrivas om?
+{
+	if(!valid_ptr(start))
+		sys_exit(-1);
+
+	char *cur = start;
+	while(pagedir_get_page(thread_current()->pagedir, cur) != NULL)
+	{
+		int addr_to_read = PGSIZE - ((int)cur % PGSIZE);
+		for(int i = 0; i < addr_to_read; ++i)
+		{
+			if(*(cur + i) == '\0')
+				return true;
+		}
+		cur = (cur + addr_to_read);
+	}
+
+	return false;
 }

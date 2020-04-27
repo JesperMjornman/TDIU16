@@ -20,7 +20,7 @@ struct map
 {
 	struct list content;
 	struct lock mlock;
-	int next_key; // Konstig?
+	int next_key;
 };
 
 void map_init(struct map* m);
@@ -33,10 +33,13 @@ void map_init(struct map* m);
 	 Using map_insert starts from key = 2 and then increments for each element.
  */
 key_t map_insert(struct map* m, value_t v);
+
 int map_insert_from_key(struct map *m, value_t v, key_t k);
-value_t map_find(struct map* m, key_t k);
+
+value_t map_find	(struct map* m, key_t k);
 value_t map_remove(struct map* m, key_t k);
 value_t map_get_from_pointer(struct list_elem *it);
+
 void map_for_each(struct map* m,
 	void(*exec)(key_t k, value_t v, int aux),
 	int aux);

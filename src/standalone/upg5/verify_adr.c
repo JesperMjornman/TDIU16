@@ -1,7 +1,8 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include "pagedir.h"
 #include "thread.h"
-
+#include <math.h>
 /* verfy_*_lenght are intended to be used in a system call that accept
  * parameters containing suspisious (user mode) adresses. The
  * operating system (executng the system call in kernel mode) must not
@@ -18,13 +19,24 @@
  *
  *  gcc -Wall -Wextra -std=gnu99 -pedantic -m32 -g pagedir.o verify_adr.c
  */
-#error Read comment above and then remove this line.
+//#error Read comment above and then remove this line.
 
 /* Verify all addresses from and including 'start' up to but excluding
  * (start+length). */
 bool verify_fix_length(void* start, int length)
 {
-  // ADD YOUR CODE HERE
+	void *cur, *end;
+	end = (void*)((unsigned)start + length);
+	cur = pg_round_down(start);
+
+	while(cur < end)
+	{
+		if(pagedir_get_page(thread_current()->pagedir, cur) == NULL)
+			return false;
+
+		cur = (void*)((unsigned)cur + PGSIZE); /* GOTO next page */
+	}
+	return true;
 }
 
 /* Verify all addresses from and including 'start' up to and including
@@ -33,7 +45,19 @@ bool verify_fix_length(void* start, int length)
  */
 bool verify_variable_length(char* start)
 {
-  // ADD YOUR CODE HERE
+	char *cur = start;
+	while(pagedir_get_page(thread_current()->pagedir, cur) != NULL)
+	{
+		int addr_to_read = PGSIZE - ((int)cur % PGSIZE);
+		for(int i = 0; i < addr_to_read; ++i)
+		{
+			if(is_end_of_string((cur + i)))
+				return true;
+		}
+		cur = (cur + addr_to_read);
+	}
+
+	return false;
 }
 
 /* Definition of test cases. */
@@ -66,7 +90,7 @@ int main(int argc, char* argv[])
     simulator_set_pagefault_time( atoi(argv[1]) );
   }
   thread_init();
-  
+
   /* Test the algorithm with a given intervall (a buffer). */
   for (i = 0; i < TEST_CASE_COUNT; ++i)
   {
@@ -75,7 +99,7 @@ int main(int argc, char* argv[])
     evaluate(result);
     end_evaluate_algorithm();
   }
-    
+
   /* Test the algorithm with a C-string (start address with
    * terminating null-character).
    */
@@ -83,7 +107,7 @@ int main(int argc, char* argv[])
   {
     start_evaluate_algorithm(test_case[i].start, test_case[i].length);
     result = verify_variable_length(test_case[i].start);
-    evaluate(result);    
+    evaluate(result);
     end_evaluate_algorithm();
   }
   return 0;

@@ -280,6 +280,7 @@ process_cleanup (void)
 
 	if(p != NULL)
 	{
+		//p->waiting = false;
 		plist_remove(&process_list, cur->tid);													/* Remove process if parent from active list (if parent is dead), fix new search problem. */
 		sema_up(&p->sema);																							/* Release sema of process. If wait(p) we sema down for waiting and sema up in cleanup */
 	}
