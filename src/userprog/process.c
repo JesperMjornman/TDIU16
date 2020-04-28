@@ -27,12 +27,13 @@
 #define HACK
 
 struct map process_list; //plist
-
+static struct lock cleanup_lock; /* Needs lock as map list is created by map.h (no special functionality for closing files)*/
 /* This function is called at boot time (threads/init.c) to initialize
  * the process subsystem. */
 void process_init(void)
 {
 	map_init(&process_list);
+	lock_init(&cleanup_lock);
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -274,8 +275,10 @@ process_cleanup (void)
 		 status = p->exit_status;
   printf("%s: exit(%d)\n", thread_name(), status);
 
+	lock_acquire(&cleanup_lock);																			/* Synch lock */
 	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
 		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
+	lock_release(&cleanup_lock);																			/* Free lock */
 	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
 
 	if(p != NULL)

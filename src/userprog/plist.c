@@ -3,9 +3,12 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
+static struct lock plock;
+
 void plist_init(struct map *pl)
 {
 	map_init(pl);
+	lock_init(&plock);
 }
 
 void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED)
@@ -56,14 +59,18 @@ bool plist_to_be_erased(key_t k UNUSED, value_t v, int aux UNUSED)
 
 size_t plist_free_all_mem(struct map *pl)
 {
+	lock_acquire(&plock);
 	struct list_elem *it = list_begin(&pl->content);
 	while(it != list_end(&pl->content))
 	{
 		struct association *e = list_entry(it, struct association, elem);
+		struct processInfo *pi = e->value;
 		it = list_remove(&e->elem);
-		free(e->value);
+		if(pi->parent_pid != 1)
+			free(e->value);
 		free(e);
 	}
+	lock_release(&plock);
 	return(!list_size(&pl->content));
 }
 

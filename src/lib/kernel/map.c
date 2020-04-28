@@ -141,11 +141,13 @@ struct list_elem *map_remove_from_pointer(struct association *it)
 
 size_t free_all_mem(struct map *m)
 {
+//	lock_acquire(&m->lock);
 	struct list_elem *it = list_begin(&m->content);
 	while(it != list_end(&m->content))
 	{
 		struct association *e = list_entry(it, struct association, elem);
 		it = map_remove_from_pointer(e);
 	}
+//	lock_release(&m->lock);
 	return(!list_size(&m->content));
 }
