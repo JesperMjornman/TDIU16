@@ -9,7 +9,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/vaddr.h"
-#include "threads/init.h"
+#include "threads/init.h" // Ta bort
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 #include "userprog/plist.h"
@@ -28,11 +28,16 @@ static int sys_write(int fd, const char *buf, int len);
 static int sys_open  (const char *fname);
 static int sys_create(const char *fname, unsigned init_size);
 static int sys_remove(const char *fname);
+static int sys_exec	 (const char *fname);
 static int sys_filesize(int fd);
 
 static unsigned sys_tell(int fd);
 
+/* Security */
 static bool valid_ptr(void *ptr);
+static bool sys_verify_variable_length(char* start);
+static bool sys_verify_fix_length(void* start, int length);
+static void sys_verify_sc(int32_t *esp);
 void
 syscall_init (void)
 {
@@ -62,7 +67,8 @@ static void
 syscall_handler (struct intr_frame *f)
 {
   int32_t* esp = (int32_t*)f->esp;
-	//int sys_read_arg_count = argc[ esp[0] ];
+
+	sys_verify_sc(esp);
   switch ( esp[0] /* retrive syscall number */ )
   {
 		case SYS_HALT:
@@ -72,7 +78,7 @@ syscall_handler (struct intr_frame *f)
 			sys_exit((int)esp[1]);
 			break;
 		case SYS_EXEC:
-			f->eax = process_execute((const char*)esp[1]);
+			f->eax = sys_exec((const char*)esp[1]);
 			break;
 		case SYS_WAIT:
 			f->eax = process_wait((int)esp[1]);
@@ -127,12 +133,6 @@ syscall_handler (struct intr_frame *f)
     default:
     {
 			sys_exit(-1);
-      /*printf ("Executed an unknown system call!\n");
-
-      printf ("Stack top + 0: %d\n", esp[0]);
-      printf ("Stack top + 1: %d\n", esp[1]);
-
-      thread_exit ();*/
     }
   }
 }
@@ -172,6 +172,9 @@ static int sys_read(int fd, char *buf, int len)
 		if(fp == NULL) /* Is the file open? */
 			return -1;
 
+		if(!sys_verify_fix_length(buf, len))
+			sys_exit(-1);
+
 		return file_read(fp, buf, len);
 	}
 	else
@@ -180,7 +183,7 @@ static int sys_read(int fd, char *buf, int len)
 
 static int sys_write(int fd, const char *buf, int len)
 {
-	if(fd == STDOUT_FILENO)
+ if(fd == STDOUT_FILENO)
 	{
 		putbuf(buf, len);
 		return len;
@@ -191,6 +194,9 @@ static int sys_write(int fd, const char *buf, int len)
 		   Find file in current thread's file map
 			 Not found -> return -1
 		 */
+		if(!sys_verify_fix_length((char*)buf, len))
+			sys_exit(-1);
+
 		struct file *fp = map_find(&thread_current()->f_map, fd);
 		if(fp == NULL)
 			return -1;
@@ -203,7 +209,7 @@ static int sys_write(int fd, const char *buf, int len)
 
 static int sys_open(const char *fname)
 {
-	if(!valid_ptr((void*)fname))
+	if(!sys_verify_variable_length((char*)fname))
 		sys_exit(-1);
 
 	struct file *fp = filesys_open(fname);
@@ -219,7 +225,7 @@ static int sys_open(const char *fname)
 
 static int sys_create(const char *fname, unsigned init_size)
 {
-	if(!valid_ptr((void*)fname))
+	if(!sys_verify_fix_length((char*)fname, init_size))
 		sys_exit(-1);
 	return filesys_create(fname, init_size);
 }
@@ -236,8 +242,8 @@ static void sys_close(int fd)
 
 static int sys_remove(const char *fname)
 {
-	if(!valid_ptr((void*)fname))
-		return false;
+	if(!sys_verify_variable_length((char*)fname))
+		sys_exit(-1);
 	return filesys_remove(fname);
 }
 
@@ -284,7 +290,7 @@ static void sys_halt(void)
 static void sys_exit(int status)
 {
 	process_exit(status);  				// Set exit code for process.
-	thread_exit(); 							// Close current thread.
+	thread_exit(); 								// Close current thread.
 }
 
 static void sys_plist(void)
@@ -292,7 +298,66 @@ static void sys_plist(void)
 	plist_print(&process_list);
 }
 
+static int sys_exec(const char *fname)
+{
+	if(!sys_verify_variable_length((char*)fname))
+		return -1;
+	return process_execute(fname);
+}
+
 static bool valid_ptr(void *ptr)
 {
-	return(ptr != NULL && ptr < PHYS_BASE); /* Temporär, fungerar inte för address intervall som är olagliga ännu */
+	return(ptr != NULL && ptr < PHYS_BASE); /* Returns true if ptr is in user-space */
+}
+
+static bool sys_verify_fix_length(void* start, int length)
+{
+	if(!valid_ptr(start))
+		sys_exit(-1);
+
+	void *cur, *end;
+	end = (void*)((unsigned)start + length);
+	cur = pg_round_down(start);
+
+	while(cur < end)
+	{
+		if(pagedir_get_page(thread_current()->pagedir, cur) == NULL)
+			return false;
+
+		cur = (void*)((unsigned)cur + PGSIZE); /* GOTO next page */
+	}
+	return true;
+}
+
+static bool sys_verify_variable_length(char* start)
+{
+	if(!valid_ptr(start))
+		sys_exit(-1);
+
+	char *cur = start;
+	while(pagedir_get_page(thread_current()->pagedir, cur) != NULL)
+	{
+		int addr_to_read = PGSIZE - ((int)cur % PGSIZE);
+		for(int i = 0; i < addr_to_read; ++i)
+		{
+			if(*(cur + i) == '\0')
+				return true;
+		}
+		cur = (cur + addr_to_read); /* GOTO next page */
+	}
+	return false;
+}
+
+static void sys_verify_sc(int32_t *esp)
+{
+	if(!sys_verify_variable_length((char*)esp))
+		sys_exit(-1);
+	else if(esp[0] > SYS_NUMBER_OF_CALLS)
+		sys_exit(-1);
+
+	for(int i = 0; i < argc[esp[0]]; ++i)
+	{
+			if(!sys_verify_variable_length((char*)(esp + (i + 1))))
+				sys_exit(-1);
+	}
 }

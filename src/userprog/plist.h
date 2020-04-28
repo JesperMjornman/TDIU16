@@ -39,6 +39,7 @@ struct processInfo
 	int exit_status;
 	bool alive;
 	bool parent_alive;
+	bool waiting;
 	struct semaphore sema;
 };
 

@@ -3,9 +3,12 @@
 #include "threads/malloc.h"
 #include "threads/synch.h"
 
+static struct lock plock;
+
 void plist_init(struct map *pl)
 {
 	map_init(pl);
+	lock_init(&plock);
 }
 
 void plist_print_format(key_t k UNUSED, value_t v, int aux UNUSED)
@@ -56,14 +59,18 @@ bool plist_to_be_erased(key_t k UNUSED, value_t v, int aux UNUSED)
 
 size_t plist_free_all_mem(struct map *pl)
 {
+	lock_acquire(&plock);
 	struct list_elem *it = list_begin(&pl->content);
 	while(it != list_end(&pl->content))
 	{
 		struct association *e = list_entry(it, struct association, elem);
+		struct processInfo *pi = e->value;
 		it = list_remove(&e->elem);
-		free(e->value);
+		if(pi->parent_pid != 1)
+			free(e->value);
 		free(e);
 	}
+	lock_release(&plock);
 	return(!list_size(&pl->content));
 }
 
@@ -76,7 +83,8 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 		p->parent_pid = parent_pid;
 		p->exit_status = 0;
 		p->alive = 1;
-		p->parent_alive = 1;
+		p->parent_alive = (p->parent_pid == 1 ? 0 : 1);
+		p->waiting = false;
 		sema_init(&p->sema, 0); 		// Move to actual insertion as it can fault there too?
   }
 	return p;
@@ -91,9 +99,10 @@ void plist_remove_if(struct map* m,
 		struct association *e = list_entry(it, struct association, elem);
 		if (cond(e->key, e->value, aux))
 		{
-			//Lock this?
+			struct processInfo *pi = e->value;
 			it = list_remove(&e->elem);
-			free(e->value);
+			if(pi->parent_pid != 1)
+				free(e->value);
 			free(e);
 			it = list_prev(it);
 		}
