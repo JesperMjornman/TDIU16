@@ -283,7 +283,6 @@ static void sys_seek(int fd, unsigned position)
 
 static void sys_halt(void)
 {
-	free_all_mem(&process_list);
 	power_off();
 }
 

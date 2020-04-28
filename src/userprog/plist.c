@@ -85,7 +85,7 @@ struct processInfo *plist_create_process(int pid, int parent_pid)
 		p->alive = 1;
 		p->parent_alive = (p->parent_pid == 1 ? 0 : 1);
 		p->waiting = false;
-		sema_init(&p->sema, 0); 		// Move to actual insertion as it can fault there too?
+		sema_init(&p->sema, 0);
   }
 	return p;
 }
