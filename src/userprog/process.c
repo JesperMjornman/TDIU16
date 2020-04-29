@@ -230,6 +230,7 @@ process_wait (int child_id)
 			p->waiting = true;
 			sema_down(&p->sema);
 		}
+		p->waiting = true; /* Failure safety, if process already dead when wait is called. */
 		status = p->exit_status;
 	}
   debug("%s#%d: process_wait(%d) RETURNS %d\n",

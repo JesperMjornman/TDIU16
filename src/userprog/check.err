@@ -1,2 +1,9 @@
-make[1]: *** [check] Error 1
-make: *** [check] Error 2
+make[1]: *** Deleting file 'tests/filst/sc-bad-nr-3.output'
+make[1]: *** [tests/klaar/pfs.output] Interrupt
+make[1]: *** [tests/userprog/args-none.output] Interrupt
+make[1]: *** [tests/userprog/args-single.output] Interrupt
+make[1]: *** [tests/userprog/args-multiple.output] Interrupt
+make[1]: *** [tests/userprog/args-many.output] Interrupt
+make[1]: *** [tests/userprog/args-dbl-space.output] Interrupt
+make[1]: *** [tests/userprog/sc-bad-sp.output] Interrupt
+make: *** [check] Interrupt
