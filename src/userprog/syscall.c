@@ -225,7 +225,7 @@ static int sys_open(const char *fname)
 
 static int sys_create(const char *fname, unsigned init_size)
 {
-	if(!sys_verify_fix_length((char*)fname, init_size))
+	if(!sys_verify_variable_length((char*)fname))
 		sys_exit(-1);
 	return filesys_create(fname, init_size);
 }
