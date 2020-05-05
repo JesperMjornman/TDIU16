@@ -27,13 +27,11 @@
 #define HACK
 
 struct map process_list; //plist
-static struct lock cleanup_lock; /* Needs lock as map list is created by map.h (no special functionality for closing files)*/
 /* This function is called at boot time (threads/init.c) to initialize
  * the process subsystem. */
 void process_init(void)
 {
 	map_init(&process_list);
-	lock_init(&cleanup_lock);
 }
 
 /* This function is currently never called. As thread_exit does not
@@ -232,6 +230,7 @@ process_wait (int child_id)
 			p->waiting = true;
 			sema_down(&p->sema);
 		}
+		p->waiting = true; /* Failure safety, if process already dead when wait is called. */
 		status = p->exit_status;
 	}
   debug("%s#%d: process_wait(%d) RETURNS %d\n",
@@ -275,15 +274,12 @@ process_cleanup (void)
 		 status = p->exit_status;
   printf("%s: exit(%d)\n", thread_name(), status);
 
-	lock_acquire(&cleanup_lock);																			/* Synch lock */
 	for(size_t fd = 2; fd < list_size(&cur->f_map.content) + 2; ++fd)	/* Close all open files in file-map, starts at fd = 2 since it's the first key(fd) */
 		filesys_close((struct file*)map_find(&cur->f_map, fd));					/* Type cast might be redundant. */
-	lock_release(&cleanup_lock);																			/* Free lock */
 	free_all_mem(&cur->f_map); 																				/* Free all pointers in f_map */
 
 	if(p != NULL)
 	{
-		//p->waiting = false;
 		plist_remove(&process_list, cur->tid);													/* Remove process if parent from active list (if parent is dead), fix new search problem. */
 		sema_up(&p->sema);																							/* Release sema of process. If wait(p) we sema down for waiting and sema up in cleanup */
 	}

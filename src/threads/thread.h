@@ -107,8 +107,6 @@ struct thread
 
 			Freeing memory of f_map should be done with caution,
 			preferably avoid allocating memory specific to the map.
-
-
 		 */
 
 #ifdef USERPROG

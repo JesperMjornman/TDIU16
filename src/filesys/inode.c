@@ -251,7 +251,6 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
 		cond_wait(&inode->rw_cond, &inode->rw_lock);
 
 	++inode->read_cnt;
-	//cond_signal(&inode->rw_cond, &inode->rw_lock); 	/* Send signal to wake next thread, hopefully reads */
 	lock_release(&inode->rw_lock);									/* Allow other read requests to go through (not hogging the lock). */
   while (size > 0)
     {
@@ -295,8 +294,8 @@ inode_read_at (struct inode *inode, void *buffer_, off_t size, off_t offset)
     }
   free (bounce);
 	lock_acquire(&inode->rw_lock);											/* Must own lock when brodcasting or signaling */
-	cond_broadcast(&inode->rw_cond, &inode->rw_lock);		/* Brodcast condition to wake up threads */
 	inode->read_cnt--; 																	/* Read finished for this thread, decrement amound of "readers" */
+	cond_broadcast(&inode->rw_cond, &inode->rw_lock);		/* Brodcast condition to wake up threads */
 	lock_release(&inode->rw_lock);											/* Done with lock */
   return bytes_read;
 }
@@ -314,9 +313,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
   off_t bytes_written = 0;
   uint8_t *bounce = NULL;
 
-	/* Condition wait here. Wait for either read to be finished or for this thread's turn in queue.
-		 Set boolean writing to true, thereby avoiding reads to be allowed at this time.
-		 Maybe set a boolean reading too? Several reads may occur at once, maybe just lock for writing? */
+/* Condition wait here. Wait for either read to be finished or for this thread's turn in queue.
+	 Set boolean writing to true, thereby avoiding reads to be allowed at this time. */
 	lock_acquire(&inode->rw_lock);
 	while(inode->read_cnt || inode->writing)
 		cond_wait(&inode->rw_cond, &inode->rw_lock);
@@ -372,8 +370,8 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
     }
   free (bounce);
 	lock_acquire(&inode->rw_lock);
-	cond_broadcast(&inode->rw_cond, &inode->rw_lock);
 	inode->writing = false;
+	cond_broadcast(&inode->rw_cond, &inode->rw_lock);
 	lock_release(&inode->rw_lock);
   return bytes_written;
 }

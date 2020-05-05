@@ -29,7 +29,7 @@ bool verify_fix_length(void* start, int length)
 	end = (void*)((unsigned)start + length);
 	cur = pg_round_down(start);
 
-	while(cur < end)
+	while(cur <= end)
 	{
 		if(pagedir_get_page(thread_current()->pagedir, cur) == NULL)
 			return false;
