@@ -40,12 +40,12 @@ struct inode
     bool removed;                       /* True if deleted, false otherwise. */
     struct inode_disk data;             /* Inode content. */
 		/*
-			As all file-handling is done via inodes we handle
+			As all file-handling is done via inodes, we handle
 			read and write locks as an "object" lock, i.e.
 			the file's read/write lock.
 
 			read_cnt keeps track of number of "readers", must be 0 for
-			writin to be acceptable.
+			writing to be acceptable.
 
 			writing boolean defines if any thread is currently writing
 			to this inode. If true, locks out all other threads from
